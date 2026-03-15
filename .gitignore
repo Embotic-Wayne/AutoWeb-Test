@@ -29,3 +29,6 @@ Thumbs.db
 # Logs / debug
 *.log
 npm-debug.log*
+
+# Intelligence Engine state (crawl cache)
+backend/data/
