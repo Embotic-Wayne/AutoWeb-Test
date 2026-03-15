@@ -1,3 +1,41 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+:root {
+  color-scheme: light;
+  --bg: #f2efe9;
+  --panel: #ffffff;
+  --ink: #1e1b16;
+  --muted: #7a6f62;
+  --accent: #c2562b;
+  --danger: #b3261e;
+  --border: #e2d8c8;
+  --shadow: 0 14px 32px rgba(30, 27, 22, 0.12);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  background: radial-gradient(circle at top, #f7f1e7 0%, #efe7dc 45%, #ece2d4 100%);
+  color: var(--ink);
+}
+
+.font-editorial {
+  font-family: "Fraunces", "Times New Roman", serif;
+}
+
+.shell-divider {
+  border-right: 1px solid var(--border);
+}
+
+.panel-shadow {
+  box-shadow: var(--shadow);
+}
