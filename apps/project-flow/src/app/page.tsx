@@ -1,8 +1,24 @@
+import dynamic from "next/dynamic";
+
+const Hero = dynamic(
+  () => import("@/components/ai-generated/Hero").then((m) => m.default),
+  {
+    ssr: false,
+    loading: () => (
+      <section className="py-12">
+        <p className="text-gray-500">Loading hero…</p>
+      </section>
+    ),
+  }
+);
+
 export default function ProjectFlowPage() {
   return (
     <main className="min-h-screen p-8">
-      <h1 className="text-2xl font-bold">Project Flow</h1>
-      <p className="mt-2 text-gray-600">B2B SaaS landing page. UI driven by dynamic-config.json.</p>
+      <Hero />
+      <p className="mt-6 text-sm text-gray-500">
+        B2B SaaS landing page. UI driven by dynamic-config.json and ai-generated components.
+      </p>
     </main>
   );
 }

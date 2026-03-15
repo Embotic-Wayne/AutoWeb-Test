@@ -7,10 +7,18 @@ out/
 build/
 dist/
 
-# Env
+# Vercel / Turbo
+.vercel/
+.turbo/
+
+# Env (never commit secrets)
 .env
 .env.local
 .env.*.local
+backend/.env
+
+# Backend data (activity, dangerous mode state)
+backend/data/
 
 # Python
 __pycache__/
@@ -18,6 +26,8 @@ __pycache__/
 .venv/
 venv/
 *.egg-info/
+.pytest_cache/
+.mypy_cache/
 
 # IDE / OS
 .idea/
@@ -29,3 +39,14 @@ Thumbs.db
 # Logs / debug
 *.log
 npm-debug.log*
+
+# Test / coverage
+coverage/
+.nyc_output/
+htmlcov/
+.coverage
+
+# Secrets / certs (if any)
+*.pem
+*.key
+!*.key.pub
