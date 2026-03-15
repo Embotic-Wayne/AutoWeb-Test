@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "sections": [],
+  "hero": {
+    "headline": "",
+    "subheadline": ""
+  },
+  "features": [],
+  "cta": {
+    "primary": "Get started",
+    "secondary": "Learn more"
+  }
+}
