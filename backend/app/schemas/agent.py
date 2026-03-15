@@ -2,7 +2,7 @@
 Mirrors shared types/agent.ts for webhook payload validation.
 """
 from enum import Enum
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -20,12 +20,15 @@ class AgentActionType(str, Enum):
     SLACK_MESSAGE = "SLACK_MESSAGE"
 
 
+AgentStatusLiteral = Literal["detecting", "analyzing", "generating", "deploying", "escalating"]
+
+
 class AgentActionPayload(BaseModel):
     """Payload accepted by /agent/webhook (site change from agent)."""
 
     id: str
-    timestamp: str  # ISO 8601
-    status: Literal["detecting", "analyzing", "generating", "deploying", "escalating"]
+    timestamp: Optional[str] = None  # ISO 8601; defaulted in pipeline if missing
+    status: Optional[AgentStatusLiteral] = None  # defaulted in pipeline if missing
     actionType: Literal["DIRECT_CODE", "SLACK_MESSAGE"]
     payload: str
     reasoning: str = Field(..., description="Agent reasoning for this action")
