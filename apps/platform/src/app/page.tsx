@@ -555,14 +555,6 @@ export default function PlatformPage() {
             })}
           </nav>
 
-          <div className="mt-auto grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 text-xs text-[var(--muted)]">
-            <div>
-              <p className="uppercase tracking-[0.2em]">Signed in as</p>
-              <p className="mt-1 text-sm font-medium text-[var(--ink)]">
-                {session.user.email}
-              </p>
-            </div>
-          </div>
         </aside>
 
         <main className="flex flex-1 flex-col gap-6">
