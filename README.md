@@ -9,7 +9,6 @@ Autonomous AI agent that monitors competitor sites and can update your website v
 | `backend/` | FastAPI — Intelligence Engine (Firecrawl, Nemotron) + deployment pipeline (GitHub, Vercel, Slack) |
 | `apps/project-flow` | Next.js B2B SaaS landing page — Hero and ai-generated components updated by the pipeline |
 | `apps/platform` | Next.js dashboard (port 3001) |
-| `apps/task-master` | Next.js fictional competitor (port 3003) |
 | `types/` | Shared TypeScript types (e.g. `AgentAction`) |
 
 ## Quick start: run and test
