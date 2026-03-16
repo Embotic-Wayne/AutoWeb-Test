@@ -10,7 +10,9 @@
     "dev:task-master": "npm run dev -w @autoweb/task-master",
     "build:platform": "npm run build -w @autoweb/platform",
     "build:project-flow": "npm run build -w @autoweb/project-flow",
-    "build:task-master": "npm run build -w @autoweb/task-master"
+    "build:task-master": "npm run build -w @autoweb/task-master",
+    "dev:auto-test-comp": "npm run dev -w @autoweb/auto-test-comp",
+    "build:auto-test-comp": "npm run build -w @autoweb/auto-test-comp"
   },
   "engines": {
     "node": ">=18"
