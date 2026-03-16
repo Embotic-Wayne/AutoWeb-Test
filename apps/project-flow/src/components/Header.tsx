@@ -25,14 +25,6 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <div className="hidden items-center rounded-lg border border-neutral-200 sm:flex">
-            <button className="rounded-l-lg bg-neutral-900 px-4 py-1.5 text-xs font-medium text-white">
-              Before
-            </button>
-            <button className="rounded-r-lg bg-white px-4 py-1.5 text-xs font-medium text-neutral-600">
-              After
-            </button>
-          </div>
           <a href="/login" className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors">
             Log in
           </a>

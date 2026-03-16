@@ -72,11 +72,11 @@ const plans = [
 
 export default function Pricing() {
   return (
-    <section id="pricing" className="border-b border-neutral-200 bg-white py-20">
+    <section id="pricing" className="border-b border-blue-100 bg-white py-20">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-12 text-center">
-          <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-neutral-100 px-3.5 py-1.5 text-sm text-neutral-700">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3.5 py-1.5 text-sm text-blue-700">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
             New: Usage-Based Pricing
           </span>
           <h2 className="mb-4 text-4xl font-bold tracking-tight text-neutral-900 sm:text-5xl">
@@ -94,12 +94,12 @@ export default function Pricing() {
               key={plan.name}
               className={`relative flex flex-col rounded-xl border p-6 shadow-sm transition hover:shadow-md ${
                 plan.recommended
-                  ? "border-emerald-500 bg-white"
+                  ? "border-blue-500 bg-white"
                   : "border-neutral-200 bg-white"
               }`}
             >
               {plan.recommended && (
-                <span className="absolute -top-3 right-4 rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">
+                <span className="absolute -top-3 right-4 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
                   Recommended
                 </span>
               )}
@@ -119,7 +119,7 @@ export default function Pricing() {
                     key={feature}
                     className="flex items-start gap-3 text-sm text-neutral-700"
                   >
-                    <CheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+                    <CheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-blue-500" />
                     {feature}
                   </li>
                 ))}
@@ -128,7 +128,7 @@ export default function Pricing() {
                 href={plan.ctaHref}
                 className={`block rounded-lg px-4 py-3 text-center text-sm font-medium transition ${
                   plan.recommended
-                    ? "border-2 border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-800"
+                    ? "border-2 border-blue-600 bg-blue-600 text-white hover:bg-blue-700"
                     : "border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50"
                 }`}
               >

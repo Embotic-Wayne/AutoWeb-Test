@@ -43,16 +43,16 @@ const companyLinks = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-neutral-200 bg-neutral-50 py-16">
+    <footer className="border-t border-blue-100 bg-blue-50/50 py-16">
       <div className="mx-auto max-w-6xl px-6">
         <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <Link
               href="/"
-              className="mb-4 flex items-center gap-2 font-bold text-neutral-900"
+              className="mb-4 flex items-center gap-2 font-bold text-blue-700"
             >
               <GraduationCapIcon className="h-7 w-7" />
-              Learnify
+              Knowledgeable
             </Link>
             <p className="max-w-sm text-sm text-neutral-600">
               Empowering learners worldwide with accessible, high-quality education. Start your journey today.
@@ -65,7 +65,7 @@ export default function Footer() {
                 <li key={label}>
                   <Link
                     href={href}
-                    className="text-sm text-neutral-600 hover:text-neutral-900"
+                    className="text-sm text-neutral-600 hover:text-blue-700"
                   >
                     {label}
                   </Link>
@@ -80,7 +80,7 @@ export default function Footer() {
                 <li key={label}>
                   <Link
                     href={href}
-                    className="text-sm text-neutral-600 hover:text-neutral-900"
+                    className="text-sm text-neutral-600 hover:text-blue-700"
                   >
                     {label}
                   </Link>
@@ -95,7 +95,7 @@ export default function Footer() {
                 <li key={label}>
                   <Link
                     href={href}
-                    className="text-sm text-neutral-600 hover:text-neutral-900"
+                    className="text-sm text-neutral-600 hover:text-blue-700"
                   >
                     {label}
                   </Link>
@@ -106,7 +106,7 @@ export default function Footer() {
               <h4 className="mb-3 font-semibold text-neutral-900">Legal</h4>
               <Link
                 href="/privacy"
-                className="text-sm text-neutral-600 hover:text-neutral-900"
+                className="text-sm text-neutral-600 hover:text-blue-700"
               >
                 Privacy
               </Link>

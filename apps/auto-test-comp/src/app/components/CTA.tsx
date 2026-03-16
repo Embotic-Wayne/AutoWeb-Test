@@ -21,25 +21,25 @@ function ArrowRightIcon({ className }: { className?: string }) {
 
 export default function CTA() {
   return (
-    <section className="bg-neutral-900 py-20">
+    <section className="bg-blue-700 py-20">
       <div className="mx-auto max-w-3xl px-6 text-center">
         <h2 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
           Ready to start your learning journey?
         </h2>
-        <p className="mb-10 text-lg text-neutral-400">
+        <p className="mb-10 text-lg text-blue-200">
           Join thousands of learners who are already transforming their careers. Start with a free trial and experience the difference.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 rounded-lg bg-neutral-100 px-5 py-3 text-sm font-medium text-neutral-900 transition hover:bg-white"
+            className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-medium text-blue-700 transition hover:bg-blue-50"
           >
             Get started for free
             <ArrowRightIcon className="h-4 w-4" />
           </Link>
           <Link
             href="/contact"
-            className="inline-flex items-center gap-2 rounded-lg border border-neutral-500 bg-transparent px-5 py-3 text-sm font-medium text-white transition hover:border-neutral-400 hover:bg-neutral-800"
+            className="inline-flex items-center gap-2 rounded-lg border border-blue-400 bg-transparent px-5 py-3 text-sm font-medium text-white transition hover:border-blue-300 hover:bg-blue-600"
           >
             Talk to sales
           </Link>
