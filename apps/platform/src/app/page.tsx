@@ -530,7 +530,7 @@ export default function PlatformPage() {
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-2xl bg-[var(--accent)]" />
             <div>
-              <p className="font-editorial text-lg font-semibold">AutoWeb</p>
+              <p className="font-editorial text-lg font-semibold">Jarvis</p>
               <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Platform</p>
             </div>
           </div>
@@ -562,7 +562,7 @@ export default function PlatformPage() {
           <header className="panel-shadow flex flex-col gap-4 rounded-3xl bg-[#161616]/90 border border-white/5 p-6 backdrop-blur md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">Project</p>
-              <h1 className="font-editorial text-3xl font-semibold">AutoWeb</h1>
+              <h1 className="font-editorial text-3xl font-semibold">Jarvis</h1>
               <p className="mt-2 text-xs text-[var(--muted)]">Live agent workspace</p>
             </div>
             <div className="flex flex-wrap items-center gap-4">
@@ -643,7 +643,7 @@ export default function PlatformPage() {
                   {onboardingStep === 1 && (
                     <div className="flex flex-col items-center gap-4 text-center">
                       <div className="h-14 w-14 rounded-2xl bg-[var(--accent)]" />
-                      <h2 className="font-editorial text-2xl font-semibold">Welcome to AutoWeb</h2>
+                      <h2 className="font-editorial text-2xl font-semibold">Welcome to Jarvis</h2>
                       <ParticleRing />
                       <p className="text-sm text-[var(--muted)]">
                         Set up your workspace in minutes. We'll prepare the agent to monitor and
@@ -697,7 +697,7 @@ export default function PlatformPage() {
                             </label>
                             <button
                               type="button"
-                              onClick={() => handleMockParse("AutoWeb_Overview.pdf")}
+                              onClick={() => handleMockParse("Jarvis_Overview.pdf")}
                               className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]"
                             >
                               Use sample
@@ -1348,7 +1348,7 @@ export default function PlatformPage() {
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
                     <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Before</p>
                     <div className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
-                      <p>Title: AutoWeb &mdash; Automate site updates</p>
+                      <p>Title: Jarvis &mdash; Automate site updates</p>
                       <p>H1: Competitive monitoring for modern teams</p>
                       <p>Meta: AI watches competitors and updates your site.</p>
                     </div>
@@ -1356,7 +1356,7 @@ export default function PlatformPage() {
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
                     <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">After</p>
                     <div className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
-                      <p>Title: AutoWeb &mdash; Real-time competitive response</p>
+                      <p>Title: Jarvis &mdash; Real-time competitive response</p>
                       <p>H1: Ship pricing and messaging updates in 60s</p>
                       <p>Meta: Autonomous SEO + GEO updates from competitor intel.</p>
                     </div>
