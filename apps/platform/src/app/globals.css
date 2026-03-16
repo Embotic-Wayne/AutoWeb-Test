@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
   color-scheme: dark;
@@ -26,13 +26,14 @@ body {
 
 body {
   margin: 0;
-  font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   background: radial-gradient(circle at top, #111111 0%, #0a0a0a 45%, #050505 100%);
   color: var(--ink);
 }
 
 .font-editorial {
-  font-family: "Fraunces", "Times New Roman", serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 .shell-divider {
