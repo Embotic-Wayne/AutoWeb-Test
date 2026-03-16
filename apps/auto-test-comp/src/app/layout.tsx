@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Learnify – Learn without limits, grow without boundaries",
+  title: "Knowledgeable – Learn without limits, grow without boundaries",
   description:
     "Access world-class education from top instructors. Master new skills, advance your career, and unlock your potential with our interactive learning platform.",
 };

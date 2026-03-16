@@ -12,7 +12,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* Learnify uses a light theme; dark mode not applied to this landing */
+/* Knowledgeable uses a light theme; dark mode not applied to this landing */
 
 body {
   background: var(--background);
