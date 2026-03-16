@@ -11,6 +11,7 @@ export default function Courses() {
       weeks: 12,
       students: "15,400",
       rating: "4.9",
+      image: "/react.svg",
     },
     {
       title: "Data Science Fundamentals",
@@ -23,6 +24,7 @@ export default function Courses() {
       weeks: 10,
       students: "12,300",
       rating: "4.8",
+      image: "/python.svg",
     },
     {
       title: "UX/UI Design Mastery",
@@ -35,6 +37,7 @@ export default function Courses() {
       weeks: 8,
       students: "9,800",
       rating: "4.9",
+      image: "/figma.svg",
     },
   ];
 
@@ -64,7 +67,9 @@ export default function Courses() {
               key={c.title}
               className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
             >
-              <div className="h-48 w-full bg-neutral-100" />
+              <div className="flex h-48 w-full items-center justify-center bg-neutral-100">
+                <img src={c.image} alt={c.title} className="h-20 w-20 object-contain" />
+              </div>
               <div className="p-5">
                 <div className="flex flex-wrap gap-2">
                   {c.tags.map((t) => (

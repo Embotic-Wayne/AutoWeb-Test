@@ -107,9 +107,11 @@ export default function Hero() {
           <div className="mt-8 flex items-center gap-3">
             <div className="flex -space-x-2">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div
+                <img
                   key={i}
-                  className="h-8 w-8 rounded-full border-2 border-white bg-neutral-200"
+                  src={i % 2 === 1 ? "/pfp1.jpeg" : "/pfp2.jpeg"}
+                  alt=""
+                  className="h-8 w-8 rounded-full border-2 border-white object-cover"
                 />
               ))}
             </div>
