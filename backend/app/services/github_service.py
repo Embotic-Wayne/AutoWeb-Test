@@ -10,7 +10,18 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-TARGET_FILE = "apps/project-flow/src/components/ai-generated/Hero.tsx"
+COMPONENT_DIR = "apps/project-flow/src/components/ai-generated"
+TARGET_FILE = f"{COMPONENT_DIR}/Hero.tsx"
+
+# Map component name (from Nemotron payload keys) to repo path
+COMPONENT_FILES: dict[str, str] = {
+    "hero": f"{COMPONENT_DIR}/Hero.tsx",
+    "stats": f"{COMPONENT_DIR}/Stats.tsx",
+    "features": f"{COMPONENT_DIR}/Features.tsx",
+    "courses": f"{COMPONENT_DIR}/Courses.tsx",
+    "pricing": f"{COMPONENT_DIR}/Pricing.tsx",
+    "cta": f"{COMPONENT_DIR}/CTA.tsx",
+}
 
 
 def _sanitize_branch_name(timestamp: str) -> str:
@@ -64,6 +75,71 @@ def create_branch_commit_pr(
     pr = repo.create_pull(
         title=f"Agent update: {action_id}",
         body=f"**Reasoning:** {reasoning}\n\nAction ID: `{action_id}`",
+        base=default_branch,
+        head=branch_name,
+    )
+
+    return {
+        "pr_url": pr.html_url,
+        "branch": branch_name,
+        "pr_number": pr.number,
+        "pr": pr,
+    }
+
+
+def create_branch_commit_pr_multi(
+    action_id: str,
+    components: dict[str, str],
+    timestamp: str,
+    reasoning: str,
+) -> dict[str, Any]:
+    """
+    Create branch, write multiple component files (hero, pricing, features), open PR.
+    components: map of component name -> full TSX file content.
+    Returns dict with pr_url, branch, pr_number.
+    """
+    if not settings.github_token or not settings.github_repo:
+        raise ValueError("GITHUB_TOKEN and GITHUB_REPO must be set")
+    if not components:
+        raise ValueError("components must not be empty")
+
+    gh = Github(settings.github_token)
+    repo = gh.get_repo(settings.github_repo)
+    default_branch = repo.default_branch
+    base_sha = repo.get_branch(default_branch).commit.sha
+
+    branch_suffix = _sanitize_branch_name(timestamp)
+    branch_name = f"agent-update-{branch_suffix}"
+
+    repo.create_git_ref(f"refs/heads/{branch_name}", base_sha)
+
+    for comp_name, content in components.items():
+        file_path = COMPONENT_FILES.get(comp_name.lower())
+        if not file_path:
+            logger.warning("Unknown component %s, skipping", comp_name)
+            continue
+        try:
+            existing = repo.get_contents(file_path, ref=branch_name)
+            repo.update_file(
+                file_path,
+                f"Agent update: {action_id} ({comp_name})",
+                content,
+                existing.sha,
+                branch=branch_name,
+            )
+        except GithubException as e:
+            if e.status != 404:
+                raise
+            repo.create_file(
+                file_path,
+                f"Agent update: {action_id} ({comp_name})",
+                content,
+                branch=branch_name,
+            )
+
+    pr = repo.create_pull(
+        title=f"Agent update: {action_id}",
+        body=f"**Reasoning:** {reasoning}\n\nAction ID: `{action_id}`\n\nUpdated: {', '.join(components.keys())}",
         base=default_branch,
         head=branch_name,
     )

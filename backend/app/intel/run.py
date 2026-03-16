@@ -1,4 +1,4 @@
-﻿"""
+"""
 Orchestration: run the Intelligence Engine pipeline.
 1. Firecrawl scrape target URL
 2. Diff vs previous state
@@ -27,7 +27,7 @@ def run_intel(target_url: str) -> dict:
     descriptor = diff_crawl(crawl, previous)
 
     result = {
-        "crawl": {k: v for k, v in crawl.items() if k != "markdown"},
+        "crawl": {k: v for k, v in crawl.items() if k not in ("markdown", "html")},
         "changes_detected": descriptor is not None,
         "action": None,
         "webhook_response": None,

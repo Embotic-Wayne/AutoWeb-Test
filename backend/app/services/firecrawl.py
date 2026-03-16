@@ -1,7 +1,9 @@
-﻿"""
+"""
 Firecrawl service: scrape a target URL and return normalized crawl data.
 Uses Firecrawl v2 API. Returns a canonical structure for the diff layer.
 """
+import re
+
 import httpx
 
 from app.config import settings
@@ -12,7 +14,7 @@ SCRAPE_URL = "https://api.firecrawl.dev/v2/scrape"
 def scrape_url(url: str) -> dict:
     """
     Scrape the given URL via Firecrawl v2 API.
-    Returns normalized structure: hero, pricing, features, markdown, url.
+    Returns normalized structure: hero, pricing, features, markdown, html, design_hints, url.
     """
     if not settings.firecrawl_api_key:
         raise ValueError("FIRECRAWL_API_KEY is not set")
@@ -23,8 +25,8 @@ def scrape_url(url: str) -> dict:
     }
     body = {
         "url": url,
-        "formats": ["markdown"],
-        "onlyMainContent": True,
+        "formats": ["markdown", "html"],
+        "onlyMainContent": False,
     }
 
     with httpx.Client(timeout=60.0) as client:
@@ -37,12 +39,51 @@ def scrape_url(url: str) -> dict:
 
     raw = data.get("data", {})
     markdown = raw.get("markdown") or ""
+    html = raw.get("html") or ""
 
-    # Normalize to canonical structure for diff: hero, pricing, features
     normalized = _normalize_crawl(markdown)
     normalized["markdown"] = markdown
+    normalized["html"] = html
     normalized["url"] = url
+    normalized["design_hints"] = _extract_design_hints(html)
     return normalized
+
+
+def _extract_design_hints(html: str) -> dict:
+    """
+    Pull visual design signals from raw HTML: brand colors, layout patterns,
+    section types, and text samples.
+    """
+    if not html:
+        return {}
+
+    hex_colors = list(dict.fromkeys(re.findall(r"#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b", html)))
+
+    rgb_colors = re.findall(r"rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)", html)
+    rgb_colors = list(dict.fromkeys(rgb_colors))
+
+    layout_patterns: list[str] = []
+    if re.search(r"grid|grid-cols|display:\s*grid", html, re.I):
+        layout_patterns.append("grid")
+    if re.search(r"flex|flex-col|display:\s*flex", html, re.I):
+        layout_patterns.append("flex")
+
+    section_ids = re.findall(r'<section[^>]*(?:id|class)=["\']([^"\']*)["\']', html, re.I)
+
+    bg_classes = re.findall(r'bg-\[([^\]]+)\]', html)
+    bg_classes = list(dict.fromkeys(bg_classes))
+
+    text_classes = re.findall(r'text-\[([^\]]+)\]', html)
+    text_classes = list(dict.fromkeys(text_classes))
+
+    return {
+        "hex_colors": hex_colors[:20],
+        "rgb_colors": rgb_colors[:10],
+        "bg_values": bg_classes[:10],
+        "text_values": text_classes[:10],
+        "layout_patterns": layout_patterns,
+        "section_hints": section_ids[:15],
+    }
 
 
 def _normalize_crawl(markdown: str) -> dict:
@@ -61,11 +102,9 @@ def _normalize_crawl(markdown: str) -> dict:
     while i < len(lines):
         line = lines[i]
         stripped = line.strip()
-        # First # heading = hero headline
         if stripped.startswith("# ") and not hero_headline:
             hero_headline = stripped[2:].strip()
             i += 1
-            # Next non-empty line(s) as subheadline until next heading or empty
             while i < len(lines):
                 next_line = lines[i].strip()
                 if next_line.startswith("#") or not next_line:

@@ -1,4 +1,6 @@
+import json
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Any
 
@@ -10,6 +12,88 @@ from app.services import slack_service
 from app.services import vercel_service
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_tsx_content(content: str) -> str:
+    """
+    Sanitize model-generated TSX so it compiles in a Next.js build.
+
+    Handles common model mistakes:
+      - Literal \\n / \\t instead of real whitespace
+      - Escaped single quotes  \\'  →  '
+      - Single-quoted JSX attributes  className='...'  →  className="..."
+      - Duplicate className props on same element
+      - Self-closing tags missing space before />
+    """
+    if not content or not content.strip():
+        return content
+
+    s = content.replace("\\n", "\n").replace("\\t", "\t")
+    s = s.replace("\\'", "'")
+
+    # Convert single-quoted JSX attribute values to double-quoted.
+    # Matches  attr='value'  and replaces with  attr="value"
+    s = re.sub(
+        r"""(\w+=)'([^']*?)'""",
+        r'\1"\2"',
+        s,
+    )
+
+    # Remove stray single quotes left after attribute conversion
+    # e.g.  className="value"'  →  className="value"
+    s = re.sub(r'(="[^"]*")\'+ ', r"\1 ", s)
+    s = re.sub(r'(="[^"]*")\'+>', r"\1>", s)
+
+    # Remove duplicate className props (keep the last one on each element).
+    # Pattern: className="..." followed (possibly with whitespace) by className="..."
+    s = re.sub(
+        r'className="[^"]*"\s+(className="[^"]*")',
+        r"\1",
+        s,
+    )
+
+    # Remove stray { after > at end of line (model wraps children in braces)
+    s = re.sub(r">\{\s*$", ">", s, flags=re.MULTILINE)
+
+    # Ensure space before self-closing />  (e.g.  <div/> → <div />)
+    s = re.sub(r'([^ /])(/\s*>)', r"\1 \2", s)
+
+    s = "\n".join(line.rstrip() for line in s.splitlines())
+    if s and not s.endswith("\n"):
+        s += "\n"
+    return s
+
+
+_ALL_COMPONENTS = ("hero", "stats", "features", "courses", "pricing", "cta")
+_FUNC_NAMES = {
+    "hero": "Hero", "stats": "Stats", "features": "Features",
+    "courses": "Courses", "pricing": "Pricing", "cta": "CTA",
+}
+
+
+def _extract_components_regex(raw: str) -> dict[str, str] | None:
+    """
+    Last-resort extraction when json.loads fails on the payload.
+    Looks for  "key": "..."  patterns or export default function boundaries.
+    """
+    components: dict[str, str] = {}
+    keys_pattern = "|".join(_ALL_COMPONENTS)
+    for key in _ALL_COMPONENTS:
+        pattern = rf'"{key}"\s*:\s*"([\s\S]*?)(?:"\s*[,}}]\s*"(?:{keys_pattern})"|\"\s*\}}$)'
+        m = re.search(pattern, raw)
+        if m:
+            content = m.group(1)
+            content = content.replace('\\"', '"').replace("\\n", "\n").replace("\\t", "\t")
+            components[key] = _normalize_tsx_content(content)
+
+    if not components:
+        for key, func_name in _FUNC_NAMES.items():
+            pattern = rf'(export\s+default\s+function\s+{func_name}\s*\(\)[\s\S]*?\n\}})'
+            m = re.search(pattern, raw)
+            if m:
+                components[key] = _normalize_tsx_content(m.group(1))
+
+    return components if components else None
 
 
 def _normalize_payload(payload: AgentActionPayload) -> dict[str, Any]:
@@ -67,13 +151,60 @@ def run_pipeline(payload: AgentActionPayload) -> None:
     if action_type == "DIRECT_CODE":
         activity_store.upsert_activity(action_id, {"status": "in_progress"})
 
-        try:
-            gh_result = github_service.create_branch_commit_pr(
-                action_id=action_id,
-                payload=data["payload"],
-                timestamp=data["timestamp"],
-                reasoning=data["reasoning"],
+        payload_raw = data.get("payload") or ""
+        components: dict[str, str] | None = None
+
+        # payload may already be a dict (nemotron.py serializes dicts, but the
+        # webhook could also receive one directly)
+        allowed = set(_ALL_COMPONENTS)
+        if isinstance(payload_raw, dict):
+            components = {
+                k: _normalize_tsx_content(v)
+                for k, v in payload_raw.items()
+                if k.lower() in allowed and isinstance(v, str) and v.strip()
+            }
+        elif isinstance(payload_raw, str) and payload_raw.strip().startswith("{"):
+            try:
+                parsed = json.loads(payload_raw)
+                if isinstance(parsed, dict) and parsed:
+                    components = {
+                        k: _normalize_tsx_content(v)
+                        for k, v in parsed.items()
+                        if k.lower() in allowed and isinstance(v, str) and v.strip()
+                    }
+            except json.JSONDecodeError:
+                logger.warning("payload looks like JSON but failed to parse; "
+                               "attempting regex extraction for %s", action_id)
+                components = _extract_components_regex(payload_raw)
+
+        if not components:
+            if isinstance(payload_raw, str) and payload_raw.strip():
+                components = {"hero": _normalize_tsx_content(payload_raw)}
+            else:
+                components = None
+        if not components:
+            logger.warning("DIRECT_CODE payload empty or invalid for %s", action_id)
+            activity_store.upsert_activity(
+                action_id,
+                {"error": "Empty or invalid payload", "status": "failed"},
             )
+            return
+
+        try:
+            if len(components) == 1 and "hero" in components:
+                gh_result = github_service.create_branch_commit_pr(
+                    action_id=action_id,
+                    payload=components["hero"],
+                    timestamp=data["timestamp"],
+                    reasoning=data["reasoning"],
+                )
+            else:
+                gh_result = github_service.create_branch_commit_pr_multi(
+                    action_id=action_id,
+                    components=components,
+                    timestamp=data["timestamp"],
+                    reasoning=data["reasoning"],
+                )
         except Exception as e:
             logger.exception("GitHub create branch/PR failed for %s", action_id)
             activity_store.upsert_activity(

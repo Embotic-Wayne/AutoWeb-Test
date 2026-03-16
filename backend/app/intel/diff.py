@@ -1,4 +1,4 @@
-﻿"""
+"""
 Logic controller: compare new crawl vs previous state.
 Detects changes in Hero, Pricing, or Features and outputs a change descriptor for Nemotron.
 """
@@ -76,9 +76,10 @@ def _build_descriptor(
     if "features" in changed_sections:
         out["features_before"] = previous_crawl.get("features") or []
         out["features_after"] = new_crawl.get("features") or []
-    # Include full markdown for context if present
     if new_crawl.get("markdown"):
         out["markdown_after"] = new_crawl["markdown"]
     if previous_crawl.get("markdown"):
         out["markdown_before"] = previous_crawl["markdown"]
+    if new_crawl.get("design_hints"):
+        out["design_hints"] = new_crawl["design_hints"]
     return out
