@@ -7,7 +7,19 @@ const config: Config = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        surface: "var(--surface)",
+        panel: "var(--panel)",
+        ink: "var(--ink)",
+        muted: "var(--muted)",
+        accent: "var(--accent)",
+        danger: "var(--danger)",
+      },
+      boxShadow: {
+        glow: "var(--glow)",
+      },
+    },
   },
   plugins: [],
 };

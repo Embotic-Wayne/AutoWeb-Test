@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import ParticleRing from "./ParticleRing";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -525,7 +526,7 @@ export default function PlatformPage() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto flex min-h-screen max-w-6xl gap-6 px-6 py-8">
-        <aside className="panel-shadow shell-divider hidden w-64 flex-col rounded-3xl bg-white/90 p-6 backdrop-blur md:flex">
+        <aside className="panel-shadow shell-divider hidden w-64 flex-col rounded-3xl bg-[#161616]/90 border border-white/5 p-6 backdrop-blur md:flex">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-2xl bg-[var(--accent)]" />
             <div>
@@ -558,7 +559,7 @@ export default function PlatformPage() {
         </aside>
 
         <main className="flex flex-1 flex-col gap-6">
-          <header className="panel-shadow flex flex-col gap-4 rounded-3xl bg-white/90 p-6 backdrop-blur md:flex-row md:items-center md:justify-between">
+          <header className="panel-shadow flex flex-col gap-4 rounded-3xl bg-[#161616]/90 border border-white/5 p-6 backdrop-blur md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">Project</p>
               <h1 className="font-editorial text-3xl font-semibold">AutoWeb</h1>
@@ -570,7 +571,7 @@ export default function PlatformPage() {
                 onClick={handleToggleDangerousMode}
                 className={`flex items-center gap-3 rounded-full border px-4 py-2 transition ${
                   dangerousMode
-                    ? "border-[var(--danger)] bg-[#fef0ef]"
+                    ? "border-[var(--danger)] bg-red-900/20"
                     : "border-[var(--border)] bg-[var(--panel)]"
                 }`}
               >
@@ -579,9 +580,9 @@ export default function PlatformPage() {
                 }`}>
                   Dangerous Mode
                 </span>
-                <div className="relative h-5 w-9 rounded-full bg-white shadow-inner">
+                <div className="relative h-5 w-9 rounded-full bg-neutral-700 shadow-inner">
                   <div className={`absolute top-0 h-5 w-5 rounded-full transition-all ${
-                    dangerousMode ? "left-4 bg-[var(--danger)]" : "left-0 bg-gray-300"
+                    dangerousMode ? "left-4 bg-[var(--danger)]" : "left-0 bg-neutral-500"
                   }`} />
                 </div>
               </button>
@@ -589,13 +590,13 @@ export default function PlatformPage() {
                 <button
                   type="button"
                   onClick={() => setAccountMenuOpen((prev) => !prev)}
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-xs font-semibold uppercase text-white"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--accent)] text-xs font-semibold uppercase text-black"
                   aria-label="Account"
                 >
                   {session.user.email.slice(0, 2)}
                 </button>
                 {accountMenuOpen && (
-                  <div className="panel-shadow absolute right-0 top-14 z-20 w-56 rounded-2xl border border-[var(--border)] bg-white p-3 text-sm">
+                  <div className="panel-shadow absolute right-0 top-14 z-20 w-56 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 text-sm">
                     <div className="grid gap-3">
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -612,7 +613,7 @@ export default function PlatformPage() {
             </div>
           </header>
 
-          <section className="panel-shadow flex flex-1 flex-col gap-6 rounded-3xl bg-white/90 p-8 backdrop-blur">
+          <section className="panel-shadow flex flex-1 flex-col gap-6 rounded-3xl bg-[#161616]/90 border border-white/5 p-8 backdrop-blur">
             {currentTab === "onboarding" && (
               <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
                 <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -643,6 +644,7 @@ export default function PlatformPage() {
                     <div className="flex flex-col items-center gap-4 text-center">
                       <div className="h-14 w-14 rounded-2xl bg-[var(--accent)]" />
                       <h2 className="font-editorial text-2xl font-semibold">Welcome to AutoWeb</h2>
+                      <ParticleRing />
                       <p className="text-sm text-[var(--muted)]">
                         Set up your workspace in minutes. We'll prepare the agent to monitor and
                         update your site.
@@ -672,7 +674,7 @@ export default function PlatformPage() {
                       </div>
 
                       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-                        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-white p-4 text-sm text-[var(--muted)]">
+                        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--muted)]">
                           <p className="text-xs uppercase tracking-[0.2em]">Option A</p>
                           <p className="mt-2 font-medium text-[var(--ink)]">
                             Upload a pitch deck or brand doc
@@ -681,7 +683,7 @@ export default function PlatformPage() {
                             PDF, Word, or plain text. We'll parse and prefill your details.
                           </p>
                           <div className="mt-4 flex flex-wrap gap-2">
-                            <label className="cursor-pointer rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+                            <label className="cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
                               Select file
                               <input
                                 type="file"
@@ -696,7 +698,7 @@ export default function PlatformPage() {
                             <button
                               type="button"
                               onClick={() => handleMockParse("AutoWeb_Overview.pdf")}
-                              className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]"
+                              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]"
                             >
                               Use sample
                             </button>
@@ -729,7 +731,7 @@ export default function PlatformPage() {
                             <input
                               value={companyName}
                               onChange={(event) => setCompanyName(event.target.value)}
-                              className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm"
+                              className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm placeholder:text-neutral-500"
                             />
                           </label>
                           <label className="grid gap-2">
@@ -737,7 +739,7 @@ export default function PlatformPage() {
                             <input
                               value={companyUrl}
                               onChange={(event) => setCompanyUrl(event.target.value)}
-                              className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm"
+                              className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm placeholder:text-neutral-500"
                             />
                           </label>
                           <label className="grid gap-2">
@@ -745,7 +747,7 @@ export default function PlatformPage() {
                             <input
                               value={companyIndustry}
                               onChange={(event) => setCompanyIndustry(event.target.value)}
-                              className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm"
+                              className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm placeholder:text-neutral-500"
                             />
                           </label>
                           <label className="grid gap-2">
@@ -753,7 +755,7 @@ export default function PlatformPage() {
                             <textarea
                               value={companyValue}
                               onChange={(event) => setCompanyValue(event.target.value)}
-                              className="h-24 resize-none rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm"
+                              className="h-24 resize-none rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm placeholder:text-neutral-500"
                             />
                           </label>
                         </div>
@@ -780,7 +782,7 @@ export default function PlatformPage() {
                           value={competitorUrl}
                           onChange={(event) => setCompetitorUrl(event.target.value)}
                           placeholder="https://competitor.com"
-                          className="flex-1 rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm"
+                          className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm placeholder:text-neutral-500"
                         />
                         <button
                           type="button"
@@ -800,7 +802,7 @@ export default function PlatformPage() {
                         {competitors.map((url, index) => (
                           <div
                             key={`${url}-${index}`}
-                            className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-white px-4 py-2 text-sm"
+                            className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm placeholder:text-neutral-500"
                           >
                             <span>{url}</span>
                             <button
@@ -853,7 +855,7 @@ export default function PlatformPage() {
                               className={`rounded-2xl border px-4 py-4 text-left ${
                                 active
                                   ? "border-[var(--accent)] bg-[var(--accent)]/10"
-                                  : "border-[var(--border)] bg-white"
+                                  : "border-[var(--border)] bg-[var(--surface)]"
                               }`}
                             >
                               <p className="text-sm font-semibold">{mode.title}</p>
@@ -929,7 +931,7 @@ export default function PlatformPage() {
                       value={agentUrl}
                       onChange={(e) => setAgentUrl(e.target.value)}
                       placeholder="https://competitor.com"
-                      className="flex-1 rounded-2xl border border-[var(--border)] bg-white px-4 py-2 text-sm"
+                      className="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm placeholder:text-neutral-500"
                     />
                     <button
                       type="button"
@@ -958,7 +960,7 @@ export default function PlatformPage() {
                           <div className="flex-1 min-w-0">
                             <p className="font-mono text-xs text-[var(--muted)]">
                               {formatTime(entry.timestamp)}
-                              <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] uppercase">
+                              <span className="ml-2 rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] uppercase">
                                 {entry.status}
                               </span>
                             </p>
@@ -1010,8 +1012,8 @@ export default function PlatformPage() {
 
                   {/* Demo preview URLs after approval */}
                   {demoPreviewUrls && (
-                    <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5">
-                      <p className="text-xs uppercase tracking-[0.28em] text-emerald-700">
+                    <div className="rounded-2xl border border-emerald-800 bg-emerald-900/20 p-5">
+                      <p className="text-xs uppercase tracking-[0.28em] text-emerald-400">
                         Live Preview
                       </p>
                       <div className="mt-3 grid gap-2">
@@ -1021,9 +1023,9 @@ export default function PlatformPage() {
                             href={link.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+                            className="flex items-center gap-2 rounded-xl border border-emerald-800 bg-[var(--surface)] px-4 py-3 text-sm font-medium text-emerald-400 hover:bg-emerald-900/20 transition-colors"
                           >
-                            <span className="text-emerald-500">&#8599;</span>
+                            <span className="text-emerald-400">&#8599;</span>
                             {link.label}
                             <span className="ml-auto text-xs text-emerald-400 font-mono">{link.url}</span>
                           </a>
@@ -1086,7 +1088,7 @@ export default function PlatformPage() {
                           onClick={() => setInsightsTab(tab.id as InsightsTab)}
                           className={`rounded-full px-4 py-2 ${
                             active
-                              ? "bg-[var(--ink)] text-white"
+                              ? "bg-white/10 text-[var(--ink)]"
                               : "border border-[var(--border)] text-[var(--muted)]"
                           }`}
                         >
@@ -1119,14 +1121,14 @@ export default function PlatformPage() {
                         insights.keywords.map((word) => (
                           <div
                             key={word}
-                            className="grid grid-cols-2 gap-3 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                            className="grid grid-cols-2 gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
                           >
                             <span>{word}</span>
                             <span className="text-[var(--muted)]">\u2014</span>
                           </div>
                         ))
                       ) : (
-                        <div className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--muted)]">
+                        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--muted)]">
                           \u2014
                         </div>
                       )}
@@ -1211,7 +1213,7 @@ export default function PlatformPage() {
                               onClick={() => setPersonaTab(tab.id as PersonaTab)}
                               className={`rounded-full px-4 py-2 ${
                                 active
-                                  ? "bg-[var(--ink)] text-white"
+                                  ? "bg-white/10 text-[var(--ink)]"
                                   : "text-[var(--muted)]"
                               }`}
                             >
@@ -1220,7 +1222,7 @@ export default function PlatformPage() {
                           );
                         })}
                       </div>
-                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-900/30 px-3 py-1 text-xs font-semibold text-emerald-400">
                         <span className="h-2 w-2 rounded-full bg-emerald-500" />
                         Generated by Nemotron
                       </span>
@@ -1373,7 +1375,7 @@ export default function PlatformPage() {
                     ].map((row) => (
                       <div
                         key={row.keyword}
-                        className="grid grid-cols-[1.5fr_1fr] gap-3 rounded-xl border border-[var(--border)] bg-white px-3 py-2"
+                        className="grid grid-cols-[1.5fr_1fr] gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
                       >
                         <span>{row.keyword}</span>
                         <span className="text-[var(--muted)]">{row.source}</span>
@@ -1407,7 +1409,7 @@ export default function PlatformPage() {
                       onClick={handleToggleDangerousMode}
                       className={`mt-4 flex items-center gap-3 rounded-full border px-4 py-2 transition ${
                         dangerousMode
-                          ? "border-[var(--danger)] bg-[#fef0ef]"
+                          ? "border-[var(--danger)] bg-red-900/20"
                           : "border-[var(--border)] bg-[var(--panel)]"
                       }`}
                     >
@@ -1416,9 +1418,9 @@ export default function PlatformPage() {
                       }`}>
                         Dangerous Mode
                       </span>
-                      <div className="relative h-5 w-9 rounded-full bg-white shadow-inner">
+                      <div className="relative h-5 w-9 rounded-full bg-neutral-700 shadow-inner">
                         <div className={`absolute top-0 h-5 w-5 rounded-full transition-all ${
-                          dangerousMode ? "left-4 bg-[var(--danger)]" : "left-0 bg-gray-300"
+                          dangerousMode ? "left-4 bg-[var(--danger)]" : "left-0 bg-neutral-500"
                         }`} />
                       </div>
                     </button>
@@ -1432,7 +1434,7 @@ export default function PlatformPage() {
                     </ul>
                     <button
                       type="button"
-                      className="mt-4 rounded-2xl border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium"
+                      className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm placeholder:text-neutral-500 font-medium"
                     >
                       Add Competitor
                     </button>
@@ -1450,7 +1452,7 @@ export default function PlatformPage() {
                     <p className="text-sm font-semibold">Brand Guidelines</p>
                     <textarea
                       disabled
-                      className="mt-3 h-28 w-full resize-none rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--muted)]"
+                      className="mt-3 h-28 w-full resize-none rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm placeholder:text-neutral-500 text-[var(--muted)]"
                       value="Straightforward, technical, confident. Avoid hype and exaggerated claims."
                     />
                   </div>
@@ -1461,7 +1463,7 @@ export default function PlatformPage() {
                       {["footer", "nav", "legal", "pricing table"].map((item) => (
                         <span
                           key={item}
-                          className="rounded-full border border-[var(--border)] bg-white px-3 py-1"
+                          className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1"
                         >
                           {item}
                         </span>
@@ -1476,7 +1478,7 @@ export default function PlatformPage() {
                       <input
                         disabled
                         value="https://hooks.slack.com/services/..."
-                        className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--muted)]"
+                        className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm placeholder:text-neutral-500 text-[var(--muted)]"
                       />
                     </label>
                     <div className="mt-4 grid gap-2 text-sm text-[var(--muted)]">
@@ -1496,7 +1498,7 @@ export default function PlatformPage() {
                   </div>
 
                   {/* Reset Demo */}
-                  <div className="rounded-2xl border border-[var(--danger)] bg-[#fef0ef] p-5">
+                  <div className="rounded-2xl border border-[var(--danger)] bg-red-900/20 p-5">
                     <p className="text-sm font-semibold text-[var(--danger)]">Reset Demo</p>
                     <p className="mt-2 text-sm text-[var(--muted)]">
                       Clear all activity, reset the Learnify site, and return to initial state.
@@ -1523,36 +1525,36 @@ export default function PlatformPage() {
         const diff = demoShowDiff === "personalization" ? PERSONALIZATION_DIFF : COMPETITOR_DIFF;
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="mx-4 w-full max-w-3xl rounded-3xl border border-[var(--border)] bg-white shadow-2xl">
+            <div className="mx-4 w-full max-w-3xl rounded-3xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl">
               <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Code Review</p>
                   <h3 className="mt-1 text-lg font-semibold">{diff.title}</h3>
                 </div>
-                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                <span className="rounded-full bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-400">
                   Awaiting Review
                 </span>
               </div>
 
               <div className="px-6 py-4">
                 <p className="mb-3 font-mono text-xs text-[var(--muted)]">{diff.file}</p>
-                <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-neutral-50 font-mono text-sm">
+                <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-neutral-900 font-mono text-sm">
                   {diff.lines.map((line, i) => {
                     let bg = "";
                     let prefix = " ";
-                    let textColor = "text-neutral-700";
+                    let textColor = "text-neutral-300";
                     if (line.type === "removed") {
-                      bg = "bg-red-50";
+                      bg = "bg-red-900/20";
                       prefix = "-";
-                      textColor = "text-red-800";
+                      textColor = "text-red-400";
                     } else if (line.type === "added") {
-                      bg = "bg-green-50";
+                      bg = "bg-green-900/20";
                       prefix = "+";
-                      textColor = "text-green-800";
+                      textColor = "text-green-400";
                     }
                     return (
                       <div key={i} className={`flex ${bg}`}>
-                        <span className="w-8 shrink-0 select-none text-right text-neutral-400 pr-2 border-r border-neutral-200">
+                        <span className="w-8 shrink-0 select-none text-right text-neutral-500 pr-2 border-r border-[var(--border)]">
                           {i + 1}
                         </span>
                         <span className={`w-5 shrink-0 text-center select-none ${textColor}`}>{prefix}</span>
@@ -1567,7 +1569,7 @@ export default function PlatformPage() {
                 <button
                   type="button"
                   onClick={handleDemoDeny}
-                  className="rounded-2xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 transition-colors"
+                  className="rounded-2xl border border-red-700 bg-red-900/30 px-5 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-900/50 transition-colors"
                 >
                   Deny
                 </button>
@@ -1593,7 +1595,7 @@ export default function PlatformPage() {
       `}} />
 
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 pb-10 md:hidden">
-        <div className="rounded-3xl border border-[var(--border)] bg-white/90 p-5">
+        <div className="rounded-3xl border border-[var(--border)] bg-[#161616]/90 border-white/5 p-5">
           <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Menu</p>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm font-medium">
             {navigation.map((item) => (
