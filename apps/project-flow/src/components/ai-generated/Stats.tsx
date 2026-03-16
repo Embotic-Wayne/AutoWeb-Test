@@ -1,23 +1,29 @@
 export default function Stats() {
-  const stats = [
-    { value: "50K+", label: "Active students", sub: "learning daily" },
-    { value: "200+", label: "Expert instructors", sub: "across disciplines" },
-    { value: "98%", label: "Completion rate", sub: "industry leading" },
-    { value: "4.9", label: "Average rating", sub: "from learners" },
-  ];
-
   return (
     <section className="border-b border-neutral-200 bg-white px-6 py-16">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 md:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label}>
-            <div className="text-3xl font-bold text-neutral-900">{s.value}</div>
-            <div className="mt-1 text-sm font-semibold text-neutral-900">
-              {s.label}
-            </div>
-            <div className="text-sm text-neutral-400">{s.sub}</div>
+      <div className="mx-auto max-w-6xl py-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-neutral-900">85%</div>
+            <div className="text-sm font-semibold text-neutral-900">Course Progress</div>
+            <div className="text-sm text-neutral-400">Mon Tue Wed</div>
           </div>
-        ))}
+          <div className="text-center">
+            <div className="text-3xl font-bold text-neutral-900">50K+</div>
+            <div className="text-sm font-semibold text-neutral-900">Active students</div>
+            <div className="text-sm text-neutral-400">learning daily</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-neutral-900">200+</div>
+            <div className="text-sm font-semibold text-neutral-900">Expert instructors</div>
+            <div className="text-sm text-neutral-400">across disciplines</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-bold text-neutral-900">98%</div>
+            <div className="text-sm font-semibold text-neutral-900">Completion rate</div>
+            <div className="text-sm text-neutral-400">industry leading</div>
+          </div>
+        </div>
       </div>
     </section>
   );
