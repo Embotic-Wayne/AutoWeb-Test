@@ -103,7 +103,7 @@ const courses = [
 
 export default function PopularCourses() {
   return (
-    <section id="courses" className="border-b border-neutral-200 bg-white py-20">
+    <section id="courses" className="border-b border-blue-100 bg-white py-20">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -116,7 +116,7 @@ export default function PopularCourses() {
           </div>
           <Link
             href="/courses"
-            className="inline-flex items-center gap-2 self-start rounded-lg border border-neutral-300 bg-neutral-50 px-4 py-2.5 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+            className="inline-flex items-center gap-2 self-start rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
           >
             View all courses
             <ArrowRightIcon className="h-4 w-4" />
@@ -126,15 +126,15 @@ export default function PopularCourses() {
           {courses.map((course) => (
             <article
               key={course.title}
-              className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition hover:shadow-md"
+              className="flex flex-col overflow-hidden rounded-xl border border-blue-100 bg-white shadow-sm transition hover:shadow-md"
             >
-              <div className="aspect-[4/3] bg-neutral-200" />
+              <div className="aspect-[4/3] bg-blue-50" />
               <div className="flex flex-1 flex-col p-6">
                 <div className="mb-3 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-medium text-white">
+                  <span className="rounded-full bg-blue-600 px-3 py-1 text-xs font-medium text-white">
                     {course.category}
                   </span>
-                  <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700">
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
                     {course.level}
                   </span>
                 </div>
@@ -153,14 +153,14 @@ export default function PopularCourses() {
                     <UserIcon className="h-4 w-4" />
                     {course.students}
                   </span>
-                  <span className="flex items-center gap-1.5 text-amber-600">
+                  <span className="flex items-center gap-1.5 text-blue-600">
                     <StarIcon className="h-4 w-4" />
                     {course.rating}
                   </span>
                 </div>
                 <Link
                   href="/enroll"
-                  className="block w-full rounded-lg bg-neutral-900 py-3 text-center text-sm font-medium text-white transition hover:bg-neutral-800"
+                  className="block w-full rounded-lg bg-blue-600 py-3 text-center text-sm font-medium text-white transition hover:bg-blue-700"
                 >
                   Enroll Now
                 </Link>

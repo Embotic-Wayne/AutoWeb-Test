@@ -22,7 +22,7 @@ const reviews = [
     name: "Sarah Chen",
     role: "Product Designer",
     avatar: "SC",
-    text: "Learnify completely changed how I pick up new skills. The courses are clear, and I finished three certifications in just a few months.",
+    text: "Knowledgeable completely changed how I pick up new skills. The courses are clear, and I finished three certifications in just a few months.",
     rating: 5,
   },
   {
@@ -36,7 +36,7 @@ const reviews = [
     name: "Elena Rodriguez",
     role: "Marketing Manager",
     avatar: "ER",
-    text: "I needed to level up my digital marketing skills fast. Learnify's structure and expert instructors made it straightforward and practical.",
+    text: "I needed to level up my digital marketing skills fast. Knowledgeable's structure and expert instructors made it straightforward and practical.",
     rating: 5,
   },
   {
@@ -50,14 +50,14 @@ const reviews = [
     name: "Amanda Foster",
     role: "Career Switcher",
     avatar: "AF",
-    text: "Switched into tech thanks to Learnify. The career paths are well thought out and the support from instructors and peers was incredible.",
+    text: "Switched into tech thanks to Knowledgeable. The career paths are well thought out and the support from instructors and peers was incredible.",
     rating: 5,
   },
   {
     name: "James Liu",
     role: "Team Lead",
     avatar: "JL",
-    text: "We use Learnify for team upskilling. Great content, flexible pacing, and the admin tools make it simple to track progress.",
+    text: "We use Knowledgeable for team upskilling. Great content, flexible pacing, and the admin tools make it simple to track progress.",
     rating: 5,
   },
 ];
@@ -71,7 +71,7 @@ function ReviewCard({
 }: (typeof reviews)[0]) {
   return (
     <div className="w-[340px] shrink-0 rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
-      <div className="mb-4 flex items-center gap-1 text-amber-500">
+      <div className="mb-4 flex items-center gap-1 text-blue-500">
         {Array.from({ length: rating }).map((_, i) => (
           <StarIcon key={i} className="h-4 w-4" />
         ))}
@@ -94,7 +94,7 @@ export default function Reviews() {
   const duplicated = [...reviews, ...reviews];
 
   return (
-    <section className="border-b border-neutral-200 bg-neutral-50/50 py-16">
+    <section className="border-b border-blue-100 bg-blue-50/30 py-16">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-10 text-center">
           <h2 className="mb-2 text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">

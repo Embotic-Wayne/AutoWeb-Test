@@ -25,23 +25,23 @@ export default function Header() {
   const { viewMode, setViewMode } = useViewMode();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-200/80 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <header className="sticky top-0 z-50 border-b border-blue-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2 font-bold text-neutral-900">
+        <Link href="/" className="flex items-center gap-2 font-bold text-blue-700">
           <GraduationCapIcon className="h-7 w-7" />
-          Learnify
+          Knowledgeable
         </Link>
         <div className="hidden items-center gap-8 md:flex">
-          <Link href="#courses" className="text-sm font-medium text-neutral-700 hover:text-neutral-900">
+          <Link href="#courses" className="text-sm font-medium text-neutral-700 hover:text-blue-700">
             Courses
           </Link>
-          <Link href="#features" className="text-sm font-medium text-neutral-700 hover:text-neutral-900">
+          <Link href="#features" className="text-sm font-medium text-neutral-700 hover:text-blue-700">
             Features
           </Link>
-          <Link href="#pricing" className="text-sm font-medium text-neutral-700 hover:text-neutral-900">
+          <Link href="#pricing" className="text-sm font-medium text-neutral-700 hover:text-blue-700">
             Pricing
           </Link>
-          <Link href="#about" className="text-sm font-medium text-neutral-700 hover:text-neutral-900">
+          <Link href="#about" className="text-sm font-medium text-neutral-700 hover:text-blue-700">
             About
           </Link>
         </div>
@@ -49,15 +49,15 @@ export default function Header() {
           <div
             role="group"
             aria-label="View mode"
-            className="flex rounded-lg border border-neutral-200 bg-neutral-50 p-0.5"
+            className="flex rounded-lg border border-blue-200 bg-blue-50 p-0.5"
           >
             <button
               type="button"
               onClick={() => setViewMode("simple")}
               className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:px-3 sm:text-sm ${
                 viewMode === "simple"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-600 hover:text-neutral-900"
+                  ? "bg-white text-blue-700 shadow-sm"
+                  : "text-blue-600 hover:text-blue-800"
               }`}
             >
               Before
@@ -67,8 +67,8 @@ export default function Header() {
               onClick={() => setViewMode("advanced")}
               className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:px-3 sm:text-sm ${
                 viewMode === "advanced"
-                  ? "bg-white text-neutral-900 shadow-sm"
-                  : "text-neutral-600 hover:text-neutral-900"
+                  ? "bg-white text-blue-700 shadow-sm"
+                  : "text-blue-600 hover:text-blue-800"
               }`}
             >
               After
@@ -76,13 +76,13 @@ export default function Header() {
           </div>
           <Link
             href="/login"
-            className="text-sm font-medium text-neutral-700 hover:text-neutral-900"
+            className="text-sm font-medium text-neutral-700 hover:text-blue-700"
           >
             Log in
           </Link>
           <Link
             href="/signup"
-            className="rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800"
+            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700"
           >
             Get Started
           </Link>
