@@ -11,7 +11,7 @@ type DashboardTab =
   | "personalization"
   | "seo"
   | "settings";
-type InsightsTab = "messaging" | "features" | "pricing" | "keywords";
+type InsightsTab = "messaging" | "keywords";
 type PersonaTab = "enterprise" | "startup";
 type OnboardingStep = 1 | 2 | 3 | 4;
 type AgentMode = "supervised" | "autonomous";
@@ -27,6 +27,18 @@ interface ActivityRecord {
   live_at?: string;
   branch?: string;
   error?: string;
+}
+
+interface InsightsData {
+  url?: string;
+  scanned_at?: string;
+  hero?: {
+    headline?: string;
+    subheadline?: string;
+  };
+  features?: string[];
+  pricing?: string[];
+  keywords?: string[];
 }
 
 const DEMO_SESSION = { user: { email: "demo@autoweb.ai" } };
@@ -45,6 +57,15 @@ function formatTime(iso?: string): string {
     return new Date(iso).toLocaleTimeString("en-US", { hour12: false });
   } catch {
     return iso;
+  }
+}
+
+function formatHost(url?: string): string {
+  if (!url) return "No scan yet";
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
   }
 }
 
@@ -69,6 +90,7 @@ export default function PlatformPage() {
   const [dangerousMode, setDangerousMode] = useState(false);
   const [runningAgent, setRunningAgent] = useState(false);
   const [agentUrl, setAgentUrl] = useState("http://localhost:3004");
+  const [insights, setInsights] = useState<InsightsData | null>(null);
 
   const handleMockParse = (fileName: string) => {
     setUploadedFileName(fileName);
@@ -104,6 +126,17 @@ export default function PlatformPage() {
     } catch { /* backend may be offline */ }
   }, []);
 
+  const fetchLatestInsights = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/intel/latest`);
+      if (res.ok) {
+        setInsights(await res.json());
+      } else if (res.status === 404) {
+        setInsights(null);
+      }
+    } catch { /* backend may be offline */ }
+  }, []);
+
   useEffect(() => {
     fetchActivities();
     const id = setInterval(fetchActivities, 5000);
@@ -116,6 +149,12 @@ export default function PlatformPage() {
       .then((d) => setDangerousMode(!!d.dangerousMode))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (currentTab === "insights" && !insights) {
+      fetchLatestInsights();
+    }
+  }, [currentTab, insights, fetchLatestInsights]);
 
   const handleToggleDangerousMode = async () => {
     try {
@@ -134,7 +173,8 @@ export default function PlatformPage() {
   };
 
   const handleRunAgent = async () => {
-    const url = agentUrl.trim() || competitors[0] || "http://localhost:3004";
+    const latestCompetitor = competitors.length ? competitors[competitors.length - 1] : "";
+    const url = latestCompetitor || agentUrl.trim() || "http://localhost:3004";
     setRunningAgent(true);
     setStatus(null);
     try {
@@ -149,6 +189,7 @@ export default function PlatformPage() {
       } else {
         setStatus("Agent triggered — watch the activity log.");
         fetchActivities();
+        fetchLatestInsights();
       }
     } catch {
       setStatus("Could not reach backend.");
@@ -770,13 +811,21 @@ export default function PlatformPage() {
 
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
-                    <p className="text-sm font-semibold">TaskMaster</p>
-                    <p className="mt-2 text-xs text-[var(--muted)]">taskmaster.ai</p>
+                    <p className="text-sm font-semibold">{formatHost(insights?.url)}</p>
+                    <p className="mt-2 text-xs text-[var(--muted)]">
+                      {insights?.url ? insights.url : "Run the agent to scan a competitor."}
+                    </p>
                     <div className="mt-4 flex items-center justify-between text-xs text-[var(--muted)]">
-                      <span>Last scanned 2 min ago</span>
-                      <span className="rounded-full bg-[var(--accent)]/10 px-3 py-1 font-semibold text-[var(--accent)]">
-                        6 changes
+                      <span>
+                        {insights?.scanned_at
+                          ? `Last scanned ${new Date(insights.scanned_at).toLocaleString("en-US")}`
+                          : "Not scanned yet"}
                       </span>
+                      {insights ? (
+                        <span className="rounded-full bg-[var(--accent)]/10 px-3 py-1 font-semibold text-[var(--accent)]">
+                          Latest
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -785,8 +834,6 @@ export default function PlatformPage() {
                   <div className="flex flex-wrap gap-2 text-sm font-medium">
                     {[
                       { id: "messaging", label: "Messaging" },
-                      { id: "features", label: "Features" },
-                      { id: "pricing", label: "Pricing" },
                       { id: "keywords", label: "Keywords" },
                     ].map((tab) => {
                       const active = insightsTab === tab.id;
@@ -811,29 +858,12 @@ export default function PlatformPage() {
                     <div className="mt-6 grid gap-3 text-sm">
                       <p className="font-semibold">Hero copy</p>
                       <p className="text-[var(--muted)]">
-                        &quot;Automate your competitor response in under a minute.&quot;
+                        {insights?.hero?.headline ? `"${insights.hero.headline}"` : "—"}
                       </p>
                       <p className="font-semibold">Tagline</p>
-                      <p className="text-[var(--muted)]">&quot;AI that ships, not just chats.&quot;</p>
-                      <p className="font-semibold">CTA</p>
-                      <p className="text-[var(--muted)]">&quot;Book a 20-min demo.&quot;</p>
-                    </div>
-                  )}
-
-                  {insightsTab === "features" && (
-                    <ul className="mt-6 grid gap-2 text-sm text-[var(--muted)]">
-                      <li>Continuous competitive monitoring</li>
-                      <li>Auto-generated PRs with rollback</li>
-                      <li>Real-time personalization rules</li>
-                      <li>Compliance-aware guardrails</li>
-                    </ul>
-                  )}
-
-                  {insightsTab === "pricing" && (
-                    <div className="mt-6 grid gap-2 text-sm text-[var(--muted)]">
-                      <p>Starter: $499 / month</p>
-                      <p>Growth: $1,500 / month</p>
-                      <p>Enterprise: Custom + SLA</p>
+                      <p className="text-[var(--muted)]">
+                        {insights?.hero?.subheadline ? `"${insights.hero.subheadline}"` : "—"}
+                      </p>
                     </div>
                   )}
 
@@ -843,19 +873,21 @@ export default function PlatformPage() {
                         <span>Them</span>
                         <span>You</span>
                       </div>
-                      {[
-                        { them: "agentic deployment", you: "\u2014" },
-                        { them: "competitive response AI", you: "\u2014" },
-                        { them: "real-time site ops", you: "\u2014" },
-                      ].map((row) => (
-                        <div
-                          key={row.them}
-                          className="grid grid-cols-2 gap-3 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
-                        >
-                          <span>{row.them}</span>
-                          <span className="text-[var(--muted)]">{row.you}</span>
+                      {(insights?.keywords && insights.keywords.length > 0) ? (
+                        insights.keywords.map((word) => (
+                          <div
+                            key={word}
+                            className="grid grid-cols-2 gap-3 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm"
+                          >
+                            <span>{word}</span>
+                            <span className="text-[var(--muted)]">\u2014</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm text-[var(--muted)]">
+                          \u2014
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
