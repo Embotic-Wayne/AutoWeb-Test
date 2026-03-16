@@ -50,3 +50,24 @@ htmlcov/
 *.pem
 *.key
 !*.key.pub
+
+# Node / Next
+node_modules/
+.next/
+out/
+.turbo/
+
+# Env files (secrets)
+.env
+*.env
+backend/.env
+apps/*/.env.local
+
+# Python
+backend/__pycache__/
+backend/.pytest_cache/
+backend/.venv/
+venv/
+
+# Backend runtime data
+backend/data/

@@ -332,8 +332,10 @@ def analyze_and_generate_action(change_descriptor: dict) -> AgentActionPayload:
         if key in sections and sections[key].strip():
             components[key] = sections[key].strip()
 
-    if sections.get("actiontype"):
-        action_type = sections["actiontype"].strip().upper()
+    _VALID_ACTIONS = {"DIRECT_CODE", "SLACK_MESSAGE"}
+    raw_action = (sections.get("actiontype") or "").strip().upper()
+    if raw_action in _VALID_ACTIONS:
+        action_type = raw_action
     elif components:
         action_type = "DIRECT_CODE"
     else:

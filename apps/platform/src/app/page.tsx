@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useCallback, useEffect, useState } from "react";
 
-type AuthMode = "login" | "signup";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 type DashboardTab =
   | "onboarding"
   | "activity"
@@ -18,19 +16,44 @@ type PersonaTab = "enterprise" | "startup";
 type OnboardingStep = 1 | 2 | 3 | 4;
 type AgentMode = "supervised" | "autonomous";
 
+interface ActivityRecord {
+  id: string;
+  timestamp?: string;
+  status?: string;
+  actionType?: string;
+  reasoning?: string;
+  pr_url?: string;
+  deployment_url?: string;
+  live_at?: string;
+  branch?: string;
+  error?: string;
+}
+
+const DEMO_SESSION = { user: { email: "demo@autoweb.ai" } };
+
+function statusColor(s?: string): string {
+  if (!s) return "bg-sky-400";
+  if (["ready", "pr_opened", "merged"].includes(s)) return "bg-emerald-500";
+  if (["generating", "in_progress", "detecting", "analyzing"].includes(s)) return "bg-sky-400";
+  if (["failed", "merge_failed", "vercel_failed", "slack_failed"].includes(s)) return "bg-red-500";
+  return "bg-amber-400";
+}
+
+function formatTime(iso?: string): string {
+  if (!iso) return "--:--:--";
+  try {
+    return new Date(iso).toLocaleTimeString("en-US", { hour12: false });
+  } catch {
+    return iso;
+  }
+}
+
 export default function PlatformPage() {
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-  const [session, setSession] = useState<Session | null>(null);
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const session = DEMO_SESSION;
   const [status, setStatus] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [currentTab, setCurrentTab] = useState<DashboardTab>("onboarding");
   const [insightsTab, setInsightsTab] = useState<InsightsTab>("messaging");
   const [personaTab, setPersonaTab] = useState<PersonaTab>("enterprise");
-  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>(1);
   const [companyName, setCompanyName] = useState("");
@@ -41,6 +64,11 @@ export default function PlatformPage() {
   const [competitorUrl, setCompetitorUrl] = useState("");
   const [competitors, setCompetitors] = useState<string[]>([]);
   const [agentMode, setAgentMode] = useState<AgentMode>("supervised");
+
+  const [activities, setActivities] = useState<ActivityRecord[]>([]);
+  const [dangerousMode, setDangerousMode] = useState(false);
+  const [runningAgent, setRunningAgent] = useState(false);
+  const [agentUrl, setAgentUrl] = useState("http://localhost:3004");
 
   const handleMockParse = (fileName: string) => {
     setUploadedFileName(fileName);
@@ -69,53 +97,64 @@ export default function PlatformPage() {
     setCompetitors((prev) => prev.filter((_, idx) => idx !== index));
   };
 
+  const fetchActivities = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/agent/activity`);
+      if (res.ok) setActivities(await res.json());
+    } catch { /* backend may be offline */ }
+  }, []);
 
   useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session ?? null);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession ?? null);
-    });
-    return () => data.subscription.unsubscribe();
-  }, [supabase]);
+    fetchActivities();
+    const id = setInterval(fetchActivities, 5000);
+    return () => clearInterval(id);
+  }, [fetchActivities]);
 
-  const handleSignIn = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!supabase) return;
-    setBusy(true);
-    setStatus(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    setStatus(error ? error.message : "Signed in.");
-  };
+  useEffect(() => {
+    fetch(`${API_URL}/agent/dangerous-mode`)
+      .then((r) => r.json())
+      .then((d) => setDangerousMode(!!d.dangerousMode))
+      .catch(() => {});
+  }, []);
 
-  const handleSignUp = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!supabase) return;
-    if (password !== confirmPassword) {
-      setStatus("Passwords do not match.");
-      return;
+  const handleToggleDangerousMode = async () => {
+    try {
+      const res = await fetch(`${API_URL}/agent/dangerous-mode`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dangerousMode: !dangerousMode }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDangerousMode(!!data.dangerousMode);
+      }
+    } catch {
+      setStatus("Failed to toggle dangerous mode.");
     }
-    setBusy(true);
-    setStatus(null);
-    const { error } = await supabase.auth.signUp({ email, password });
-    setBusy(false);
-    setStatus(
-      error
-        ? error.message
-        : "Account created. Check your email if confirmation is required."
-    );
   };
 
-  const handleSignOut = async () => {
-    if (!supabase) return;
-    setBusy(true);
+  const handleRunAgent = async () => {
+    const url = agentUrl.trim() || competitors[0] || "http://localhost:3004";
+    setRunningAgent(true);
     setStatus(null);
-    const { error } = await supabase.auth.signOut();
-    setBusy(false);
-    setStatus(error ? error.message : "Signed out.");
+    try {
+      const res = await fetch(`${API_URL}/intel/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setStatus(`Agent error: ${err.detail || res.statusText}`);
+      } else {
+        setStatus("Agent triggered — watch the activity log.");
+        fetchActivities();
+      }
+    } catch {
+      setStatus("Could not reach backend.");
+    } finally {
+      setRunningAgent(false);
+    }
   };
 
   const navigation = [
@@ -244,16 +283,9 @@ export default function PlatformPage() {
             <div>
               <p className="uppercase tracking-[0.2em]">Signed in as</p>
               <p className="mt-1 text-sm font-medium text-[var(--ink)]">
-                {session?.user.email ?? "Not signed in"}
+                {session.user.email}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="rounded-xl border border-[var(--border)] px-3 py-2 text-left text-sm font-medium text-[var(--muted)]"
-            >
-              Logout
-            </button>
           </div>
         </aside>
 
@@ -265,14 +297,26 @@ export default function PlatformPage() {
               <p className="mt-2 text-xs text-[var(--muted)]">Live agent workspace</p>
             </div>
             <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-3 rounded-full border border-[var(--danger)] bg-[#fef0ef] px-4 py-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--danger)]">
+              <button
+                type="button"
+                onClick={handleToggleDangerousMode}
+                className={`flex items-center gap-3 rounded-full border px-4 py-2 transition ${
+                  dangerousMode
+                    ? "border-[var(--danger)] bg-[#fef0ef]"
+                    : "border-[var(--border)] bg-[var(--panel)]"
+                }`}
+              >
+                <span className={`text-xs font-semibold uppercase tracking-[0.2em] ${
+                  dangerousMode ? "text-[var(--danger)]" : "text-[var(--muted)]"
+                }`}>
                   Dangerous Mode
                 </span>
-                <div className="h-5 w-9 rounded-full bg-white shadow-inner">
-                  <div className="h-5 w-5 rounded-full bg-[var(--danger)]" />
+                <div className="relative h-5 w-9 rounded-full bg-white shadow-inner">
+                  <div className={`absolute top-0 h-5 w-5 rounded-full transition-all ${
+                    dangerousMode ? "left-4 bg-[var(--danger)]" : "left-0 bg-gray-300"
+                  }`} />
                 </div>
-              </div>
+              </button>
               <div className="relative">
                 <button
                   type="button"
@@ -280,57 +324,20 @@ export default function PlatformPage() {
                   className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-xs font-semibold uppercase text-white"
                   aria-label="Account"
                 >
-                  {session?.user.email?.slice(0, 2) ?? "AC"}
+                  {session.user.email.slice(0, 2)}
                 </button>
                 {accountMenuOpen && (
                   <div className="panel-shadow absolute right-0 top-14 z-20 w-56 rounded-2xl border border-[var(--border)] bg-white p-3 text-sm">
-                    {session ? (
-                      <div className="grid gap-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                            Signed in
-                          </p>
-                          <p className="mt-1 text-sm font-medium text-[var(--ink)]">
-                            {session.user.email}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleSignOut}
-                          className="rounded-xl border border-[var(--border)] px-3 py-2 text-left text-sm font-medium text-[var(--muted)]"
-                        >
-                          Logout
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="grid gap-2">
+                    <div className="grid gap-3">
+                      <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                          Account
+                          Signed in
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAuthMode("login");
-                            setAuthModalOpen(true);
-                            setAccountMenuOpen(false);
-                          }}
-                          className="rounded-xl border border-[var(--border)] px-3 py-2 text-left text-sm font-medium"
-                        >
-                          Sign in
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAuthMode("signup");
-                            setAuthModalOpen(true);
-                            setAccountMenuOpen(false);
-                          }}
-                          className="rounded-xl border border-[var(--border)] px-3 py-2 text-left text-sm font-medium"
-                        >
-                          Sign up
-                        </button>
+                        <p className="mt-1 text-sm font-medium text-[var(--ink)]">
+                          {session.user.email}
+                        </p>
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -369,7 +376,7 @@ export default function PlatformPage() {
                       <div className="h-14 w-14 rounded-2xl bg-[var(--accent)]" />
                       <h2 className="font-editorial text-2xl font-semibold">Welcome to AutoWeb</h2>
                       <p className="text-sm text-[var(--muted)]">
-                        Set up your workspace in minutes. We’ll prepare the agent to monitor and
+                        Set up your workspace in minutes. We'll prepare the agent to monitor and
                         update your site.
                       </p>
                       <button
@@ -403,7 +410,7 @@ export default function PlatformPage() {
                             Upload a pitch deck or brand doc
                           </p>
                           <p className="mt-2 text-xs">
-                            PDF, Word, or plain text. We’ll parse and prefill your details.
+                            PDF, Word, or plain text. We'll parse and prefill your details.
                           </p>
                           <div className="mt-4 flex flex-wrap gap-2">
                             <label className="cursor-pointer rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -618,7 +625,10 @@ export default function PlatformPage() {
                 </div>
               </div>
             )}
-            {currentTab === "activity" && (
+
+            {currentTab === "activity" && (() => {
+              const latest = activities[0] as ActivityRecord | undefined;
+              return (
               <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
@@ -635,63 +645,65 @@ export default function PlatformPage() {
                     </span>
                   </div>
 
-                  <div className="h-[420px] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
+                  <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 md:flex-row">
+                    <input
+                      value={agentUrl}
+                      onChange={(e) => setAgentUrl(e.target.value)}
+                      placeholder="https://competitor.com"
+                      className="flex-1 rounded-2xl border border-[var(--border)] bg-white px-4 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={runningAgent}
+                      onClick={handleRunAgent}
+                      className="rounded-2xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {runningAgent ? "Running\u2026" : "Run Agent"}
+                    </button>
+                  </div>
+
+                  <div className="h-[380px] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
                     <div className="grid gap-3 text-sm">
-                      {[
-                        {
-                          time: "09:22:14",
-                          status: "success",
-                          message: "Deployed new pricing hero after Brightline update.",
-                        },
-                        {
-                          time: "09:18:02",
-                          status: "info",
-                          message: "Detected new case study section on TaskMaster.",
-                        },
-                        {
-                          time: "09:12:48",
-                          status: "warning",
-                          message: "Awaiting approval for testimonial swap.",
-                        },
-                        {
-                          time: "09:06:11",
-                          status: "error",
-                          message: "Escalated: competitor added testimonials but none available.",
-                        },
-                        {
-                          time: "09:01:35",
-                          status: "success",
-                          message: "Injected keyword set: autonomous site updates.",
-                        },
-                        {
-                          time: "08:57:09",
-                          status: "info",
-                          message: "Scan completed across 2 competitors.",
-                        },
-                      ].map((entry) => {
-                        const color =
-                          entry.status === "success"
-                            ? "bg-emerald-500"
-                            : entry.status === "warning"
-                            ? "bg-amber-400"
-                            : entry.status === "error"
-                            ? "bg-red-500"
-                            : "bg-sky-400";
-                        return (
-                          <div
-                            key={`${entry.time}-${entry.message}`}
-                            className="flex items-start gap-3 border-b border-dashed border-[var(--border)] pb-3 last:border-none last:pb-0"
-                          >
-                            <span className={`mt-1 h-2.5 w-2.5 rounded-full ${color}`} />
-                            <div className="flex-1">
-                              <p className="font-mono text-xs text-[var(--muted)]">
-                                {entry.time}
-                              </p>
-                              <p className="text-sm">{entry.message}</p>
-                            </div>
+                      {activities.length === 0 && (
+                        <p className="text-sm text-[var(--muted)]">
+                          No activity yet. Enter a competitor URL above and click Run Agent.
+                        </p>
+                      )}
+                      {activities.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="flex items-start gap-3 border-b border-dashed border-[var(--border)] pb-3 last:border-none last:pb-0"
+                        >
+                          <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${statusColor(entry.status)}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-mono text-xs text-[var(--muted)]">
+                              {formatTime(entry.timestamp)}
+                              <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] uppercase">
+                                {entry.status}
+                              </span>
+                            </p>
+                            <p className="text-sm">{entry.reasoning || entry.actionType}</p>
+                            {entry.pr_url && (
+                              <a href={entry.pr_url} target="_blank" rel="noreferrer" className="text-xs text-[var(--accent)] underline">
+                                View PR
+                              </a>
+                            )}
+                            {entry.deployment_url && (
+                              <a
+                                href={entry.deployment_url.startsWith("http") ? entry.deployment_url : `https://${entry.deployment_url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="ml-2 text-xs text-[var(--accent)] underline"
+                              >
+                                View Deployment
+                              </a>
+                            )}
+                            {entry.error && (
+                              <p className="mt-1 text-xs text-red-500">{entry.error}</p>
+                            )}
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -701,23 +713,51 @@ export default function PlatformPage() {
                     <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
                       Last Deployment
                     </p>
-                    <h3 className="mt-2 text-lg font-semibold">Pricing hero refresh</h3>
-                    <p className="mt-2 text-sm text-[var(--muted)]">
-                      Updated headline and CTA to match Brightline’s new enterprise tier.
-                    </p>
-                    <div className="mt-4 grid gap-2 text-sm text-[var(--muted)]">
-                      <p>PR: autoweb/pr-1842</p>
-                      <p>Preview: vercel.app/autoweb-1842</p>
-                      <p>Status: Auto-merged</p>
-                    </div>
+                    {latest ? (
+                      <>
+                        <h3 className="mt-2 text-lg font-semibold">
+                          {latest.actionType === "SLACK_MESSAGE" ? "Slack Escalation" : "Code Update"}
+                        </h3>
+                        <p className="mt-2 text-sm text-[var(--muted)]">
+                          {latest.reasoning || "\u2014"}
+                        </p>
+                        <div className="mt-4 grid gap-2 text-sm text-[var(--muted)]">
+                          {latest.pr_url && (
+                            <p>
+                              PR:{" "}
+                              <a href={latest.pr_url} target="_blank" rel="noreferrer" className="text-[var(--accent)] underline">
+                                {latest.pr_url.split("/").slice(-2).join("/")}
+                              </a>
+                            </p>
+                          )}
+                          {latest.deployment_url && (
+                            <p>
+                              Preview:{" "}
+                              <a
+                                href={latest.deployment_url.startsWith("http") ? latest.deployment_url : `https://${latest.deployment_url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[var(--accent)] underline"
+                              >
+                                {latest.deployment_url}
+                              </a>
+                            </p>
+                          )}
+                          <p>Status: {latest.status || "\u2014"}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="mt-2 text-sm text-[var(--muted)]">No deployments yet.</p>
+                    )}
                   </div>
 
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">
-                    Monitoring 2 competitors · Last scan 4 min ago · Next scan in 11 min
+                    Polling every 5s &middot; {activities.length} activities tracked
                   </div>
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {currentTab === "insights" && (
               <div className="grid gap-6">
@@ -771,12 +811,12 @@ export default function PlatformPage() {
                     <div className="mt-6 grid gap-3 text-sm">
                       <p className="font-semibold">Hero copy</p>
                       <p className="text-[var(--muted)]">
-                        “Automate your competitor response in under a minute.”
+                        &quot;Automate your competitor response in under a minute.&quot;
                       </p>
                       <p className="font-semibold">Tagline</p>
-                      <p className="text-[var(--muted)]">“AI that ships, not just chats.”</p>
+                      <p className="text-[var(--muted)]">&quot;AI that ships, not just chats.&quot;</p>
                       <p className="font-semibold">CTA</p>
-                      <p className="text-[var(--muted)]">“Book a 20-min demo.”</p>
+                      <p className="text-[var(--muted)]">&quot;Book a 20-min demo.&quot;</p>
                     </div>
                   )}
 
@@ -804,9 +844,9 @@ export default function PlatformPage() {
                         <span>You</span>
                       </div>
                       {[
-                        { them: "agentic deployment", you: "—" },
-                        { them: "competitive response AI", you: "—" },
-                        { them: "real-time site ops", you: "—" },
+                        { them: "agentic deployment", you: "\u2014" },
+                        { them: "competitive response AI", you: "\u2014" },
+                        { them: "real-time site ops", you: "\u2014" },
                       ].map((row) => (
                         <div
                           key={row.them}
@@ -863,7 +903,7 @@ export default function PlatformPage() {
                       hero: "Compliance-first automation for enterprise web ops.",
                       cta: "Schedule a security review",
                       proof: "SOC2, ISO27001, 50+ deployments",
-                      emphasis: "Governance · SLA · Audit logs",
+                      emphasis: "Governance \u00b7 SLA \u00b7 Audit logs",
                     },
                     {
                       title: "Startup",
@@ -871,7 +911,7 @@ export default function PlatformPage() {
                       hero: "Ship competitive updates in minutes, not quarters.",
                       cta: "Start free trial",
                       proof: "Trusted by fast-moving teams",
-                      emphasis: "Speed · Growth · Experimentation",
+                      emphasis: "Speed \u00b7 Growth \u00b7 Experimentation",
                     },
                   ].map((card) => (
                     <div
@@ -926,7 +966,7 @@ export default function PlatformPage() {
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
                     <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Before</p>
                     <div className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
-                      <p>Title: AutoWeb — Automate site updates</p>
+                      <p>Title: AutoWeb &mdash; Automate site updates</p>
                       <p>H1: Competitive monitoring for modern teams</p>
                       <p>Meta: AI watches competitors and updates your site.</p>
                     </div>
@@ -934,7 +974,7 @@ export default function PlatformPage() {
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
                     <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">After</p>
                     <div className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
-                      <p>Title: AutoWeb — Real-time competitive response</p>
+                      <p>Title: AutoWeb &mdash; Real-time competitive response</p>
                       <p>H1: Ship pricing and messaging updates in 60s</p>
                       <p>Meta: Autonomous SEO + GEO updates from competitor intel.</p>
                     </div>
@@ -982,14 +1022,26 @@ export default function PlatformPage() {
                     <p className="mt-2 text-sm text-[var(--muted)]">
                       Dangerous mode allows autonomous code changes without human approval.
                     </p>
-                    <div className="mt-4 flex items-center gap-3 rounded-full border border-[var(--danger)] bg-[#fef0ef] px-4 py-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--danger)]">
+                    <button
+                      type="button"
+                      onClick={handleToggleDangerousMode}
+                      className={`mt-4 flex items-center gap-3 rounded-full border px-4 py-2 transition ${
+                        dangerousMode
+                          ? "border-[var(--danger)] bg-[#fef0ef]"
+                          : "border-[var(--border)] bg-[var(--panel)]"
+                      }`}
+                    >
+                      <span className={`text-xs font-semibold uppercase tracking-[0.2em] ${
+                        dangerousMode ? "text-[var(--danger)]" : "text-[var(--muted)]"
+                      }`}>
                         Dangerous Mode
                       </span>
-                      <div className="h-5 w-9 rounded-full bg-white shadow-inner">
-                        <div className="h-5 w-5 rounded-full bg-[var(--danger)]" />
+                      <div className="relative h-5 w-9 rounded-full bg-white shadow-inner">
+                        <div className={`absolute top-0 h-5 w-5 rounded-full transition-all ${
+                          dangerousMode ? "left-4 bg-[var(--danger)]" : "left-0 bg-gray-300"
+                        }`} />
                       </div>
-                    </div>
+                    </button>
                   </div>
 
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
@@ -1009,8 +1061,8 @@ export default function PlatformPage() {
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
                     <p className="text-sm font-semibold">Personas</p>
                     <ul className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
-                      <li>Enterprise — utm_source=enterprise</li>
-                      <li>Startup — utm_source=startup</li>
+                      <li>Enterprise &mdash; utm_source=enterprise</li>
+                      <li>Startup &mdash; utm_source=startup</li>
                     </ul>
                   </div>
 
@@ -1085,120 +1137,9 @@ export default function PlatformPage() {
                 {item.label}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="rounded-2xl border border-[var(--border)] px-4 py-3 text-left"
-            >
-              Logout
-            </button>
           </div>
         </div>
       </div>
-
-      {authModalOpen && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/30 px-6">
-          <div className="panel-shadow w-full max-w-lg rounded-3xl bg-white p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">Account</p>
-                <h2 className="font-editorial text-2xl font-semibold">
-                  {authMode === "login" ? "Sign in" : "Create account"}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAuthModalOpen(false)}
-                className="rounded-full border border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]"
-              >
-                Close
-              </button>
-            </div>
-
-            {!supabase ? (
-              <div className="mt-6">
-                <p className="text-sm text-[var(--muted)]">
-                  Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or
-                  `NEXT_PUBLIC_SUPABASE_ANON_KEY`) to enable authentication.
-                </p>
-              </div>
-            ) : (
-              <form
-                onSubmit={authMode === "login" ? handleSignIn : handleSignUp}
-                className="mt-6 grid gap-5"
-              >
-                <div className="flex rounded-full border border-[var(--border)] p-1 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode("login")}
-                    className={`rounded-full px-4 py-2 ${
-                      authMode === "login" ? "bg-[var(--ink)] text-white" : "text-[var(--muted)]"
-                    }`}
-                  >
-                    Log in
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode("signup")}
-                    className={`rounded-full px-4 py-2 ${
-                      authMode === "signup" ? "bg-[var(--ink)] text-white" : "text-[var(--muted)]"
-                    }`}
-                  >
-                    Create account
-                  </button>
-                </div>
-                <label className="grid gap-2 text-sm">
-                  Email
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
-                  />
-                </label>
-                <label className="grid gap-2 text-sm">
-                  Password
-                  <input
-                    type="password"
-                    autoComplete={authMode === "login" ? "current-password" : "new-password"}
-                    required
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
-                  />
-                </label>
-                {authMode === "signup" && (
-                  <label className="grid gap-2 text-sm">
-                    Confirm password
-                    <input
-                      type="password"
-                      autoComplete="new-password"
-                      required
-                      value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
-                      className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm outline-none focus:border-[var(--accent)]"
-                    />
-                  </label>
-                )}
-                {status && <p className="text-sm text-[var(--muted)]">{status}</p>}
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="rounded-2xl bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-95"
-                >
-                  {busy
-                    ? "Working..."
-                    : authMode === "login"
-                    ? "Log in"
-                    : "Create account"}
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
