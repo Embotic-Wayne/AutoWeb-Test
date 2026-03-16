@@ -14,7 +14,7 @@ type DashboardTab =
   | "seo"
   | "settings";
 type InsightsTab = "messaging" | "features" | "pricing" | "keywords";
-type PersonaTab = "enterprise" | "startup";
+type PersonaTab = "teacher" | "student";
 type OnboardingStep = 1 | 2 | 3 | 4;
 type AgentMode = "supervised" | "autonomous";
 
@@ -29,7 +29,9 @@ export default function PlatformPage() {
   const [busy, setBusy] = useState(false);
   const [currentTab, setCurrentTab] = useState<DashboardTab>("onboarding");
   const [insightsTab, setInsightsTab] = useState<InsightsTab>("messaging");
-  const [personaTab, setPersonaTab] = useState<PersonaTab>("enterprise");
+  const [personaTab, setPersonaTab] = useState<PersonaTab>("teacher");
+  const [personaData, setPersonaData] = useState<any[] | null>(null);
+  const [iframeKey, setIframeKey] = useState(0);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>(1);
@@ -44,10 +46,14 @@ export default function PlatformPage() {
 
   const handleMockParse = (fileName: string) => {
     setUploadedFileName(fileName);
-    setCompanyName("AutoWeb");
-    setCompanyUrl("https://autoweb.ai");
-    setCompanyIndustry("AI Infrastructure");
-    setCompanyValue("We monitor competitors and ship site updates in under 60 seconds.");
+    setCompanyName("Learnify");
+    setCompanyUrl("https://learnify.io");
+    setCompanyIndustry("EdTech");
+    setCompanyValue("World-class online education for teachers and students.");
+    setPersonaData([
+      { key: "teacher", utm_source: "canvas-lms", headline: "Empower your classroom with smarter tools", subheadline: "Automate grading, track progress, and focus on what matters — teaching.", cta: "Start Your Free Trial", ctaHref: "/signup?plan=educator" },
+      { key: "student", utm_source: "unidays", headline: "Study smarter, not harder", subheadline: "AI-powered study plans, flashcards, and practice tests — all in one place.", cta: "Get Started Free", ctaHref: "/signup?plan=student" },
+    ]);
   };
 
   const handleClearUpload = () => {
@@ -56,6 +62,49 @@ export default function PlatformPage() {
     setCompanyUrl("");
     setCompanyIndustry("");
     setCompanyValue("");
+    setPersonaData(null);
+  };
+
+  const handleLaunchAgent = async () => {
+    if (!personaData) return;
+    setBusy(true);
+    try {
+      if (agentMode === "autonomous") {
+        await fetch("http://localhost:8000/agent/dangerous-mode", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dangerousMode: true }),
+        });
+      }
+      await fetch("http://localhost:8000/personalization/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personas: personaData,
+          default_headline: "Learn without limits, grow without boundaries.",
+          default_subheadline: "Access world-class education from top instructors.",
+          default_cta: "Start learning free",
+          default_ctaHref: "/signup",
+        }),
+      });
+      setCurrentTab("activity");
+    } catch (err) {
+      console.error("Launch failed:", err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResetPersonalization = async () => {
+    setBusy(true);
+    try {
+      await fetch("http://localhost:8000/personalization/reset", { method: "POST" });
+      setCurrentTab("activity");
+    } catch (err) {
+      console.error("Reset failed:", err);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleAddCompetitor = () => {
@@ -615,6 +664,16 @@ export default function PlatformPage() {
                       Next
                     </button>
                   )}
+                  {onboardingStep === 4 && (
+                    <button
+                      type="button"
+                      onClick={handleLaunchAgent}
+                      disabled={busy || !personaData}
+                      className="rounded-2xl bg-[var(--accent)] px-6 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {busy ? "Launching..." : "Launch Agent"}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -833,8 +892,8 @@ export default function PlatformPage() {
                   </div>
                   <div className="flex rounded-full border border-[var(--border)] p-1 text-sm">
                     {[
-                      { id: "enterprise", label: "Enterprise" },
-                      { id: "startup", label: "Startup" },
+                      { id: "teacher", label: "Teacher" },
+                      { id: "student", label: "Student" },
                     ].map((tab) => {
                       const active = personaTab === tab.id;
                       return (
@@ -858,20 +917,20 @@ export default function PlatformPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   {[
                     {
-                      title: "Enterprise",
-                      utm: "utm_source=enterprise",
-                      hero: "Compliance-first automation for enterprise web ops.",
-                      cta: "Schedule a security review",
-                      proof: "SOC2, ISO27001, 50+ deployments",
-                      emphasis: "Governance · SLA · Audit logs",
+                      title: "Teacher",
+                      utm: "utm_source=canvas-lms",
+                      hero: "Empower your classroom with smarter tools",
+                      cta: "Start Your Free Trial",
+                      proof: "Trusted by 10,000+ educators worldwide",
+                      emphasis: "Grading · Curriculum · Student analytics",
                     },
                     {
-                      title: "Startup",
-                      utm: "utm_source=startup",
-                      hero: "Ship competitive updates in minutes, not quarters.",
-                      cta: "Start free trial",
-                      proof: "Trusted by fast-moving teams",
-                      emphasis: "Speed · Growth · Experimentation",
+                      title: "Student",
+                      utm: "utm_source=unidays",
+                      hero: "Study smarter, not harder",
+                      cta: "Get Started Free",
+                      proof: "Join 50,000+ students already learning",
+                      emphasis: "Flashcards · Practice tests · Study plans",
                     },
                   ].map((card) => (
                     <div
@@ -911,6 +970,53 @@ export default function PlatformPage() {
                   >
                     Add Persona
                   </button>
+                </div>
+
+                <div className="mt-2">
+                  <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
+                    Simulate Visitor
+                  </p>
+                  <h3 className="font-editorial text-xl font-semibold">Side-by-Side Preview</h3>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {[
+                      { label: "Teacher View", utm: "utm_source=canvas-lms" },
+                      { label: "Student View", utm: "utm_source=unidays" },
+                    ].map((view) => {
+                      const baseUrl = process.env.NEXT_PUBLIC_PROJECT_FLOW_URL || "http://localhost:3002";
+                      return (
+                        <div
+                          key={view.label}
+                          className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3"
+                        >
+                          <p className="text-sm font-semibold">{view.label}</p>
+                          <p className="text-xs text-[var(--muted)]">?{view.utm}</p>
+                          <iframe
+                            key={iframeKey}
+                            src={`${baseUrl}/?${view.utm}`}
+                            className="mt-2 h-[400px] w-full rounded-xl border border-[var(--border)]"
+                            title={view.label}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-4 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIframeKey((k) => k + 1)}
+                      className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-sm font-medium"
+                    >
+                      Refresh Previews
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResetPersonalization}
+                      disabled={busy}
+                      className="rounded-2xl border border-[var(--danger)] bg-[#fef0ef] px-4 py-2 text-sm font-semibold text-[var(--danger)] disabled:opacity-50"
+                    >
+                      {busy ? "Resetting..." : "Reset Personalization"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
