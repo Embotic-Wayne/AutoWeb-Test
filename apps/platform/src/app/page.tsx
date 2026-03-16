@@ -527,12 +527,9 @@ export default function PlatformPage() {
     <div className="min-h-screen">
       <div className="mx-auto flex min-h-screen max-w-6xl gap-6 px-6 py-8">
         <aside className="panel-shadow shell-divider hidden w-64 flex-col rounded-3xl bg-[#161616]/90 border border-white/5 p-6 backdrop-blur md:flex">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-[var(--accent)]" />
-            <div>
-              <p className="font-editorial text-lg font-semibold">Jarvis</p>
-              <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Platform</p>
-            </div>
+          <div>
+            <p className="font-editorial text-lg font-semibold">Jarvis</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Platform</p>
           </div>
 
           <nav className="mt-10 flex flex-1 flex-col gap-2 text-sm font-medium text-[var(--ink)]">
@@ -560,10 +557,15 @@ export default function PlatformPage() {
 
         <main className="flex flex-1 flex-col gap-6">
           <header className="panel-shadow flex flex-col gap-4 rounded-3xl bg-[#161616]/90 border border-white/5 p-6 backdrop-blur md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">Project</p>
-              <h1 className="font-editorial text-3xl font-semibold">Jarvis</h1>
-              <p className="mt-2 text-xs text-[var(--muted)]">Live agent workspace</p>
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-2xl">
+                <ParticleRing size={56} />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">Project</p>
+                <h1 className="font-editorial text-3xl font-semibold">Jarvis</h1>
+                <p className="mt-2 text-xs text-[var(--muted)]">Live agent workspace</p>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-4">
               <button
@@ -642,7 +644,6 @@ export default function PlatformPage() {
                 <div className="rounded-3xl border border-[var(--border)] bg-[var(--panel)] p-8">
                   {onboardingStep === 1 && (
                     <div className="flex flex-col items-center gap-4 text-center">
-                      <div className="h-14 w-14 rounded-2xl bg-[var(--accent)]" />
                       <h2 className="font-editorial text-2xl font-semibold">Welcome to Jarvis</h2>
                       <ParticleRing />
                       <p className="text-sm text-[var(--muted)]">

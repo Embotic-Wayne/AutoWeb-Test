@@ -2,15 +2,15 @@
 
 import { useEffect, useRef } from "react";
 
-const PARTICLE_COUNT = 350;
-const CANVAS_SIZE = 340;
-const RING_RADIUS = 105;
-const RING_THICKNESS = 45;
-const CONNECTION_DIST = 50;
-const REPEL_DIST = 100;
-const REPEL_STRENGTH = 5;
+const DEFAULT_CANVAS_SIZE = 340;
+const DEFAULT_PARTICLE_COUNT = 350;
+const DEFAULT_RING_RADIUS = 105;
+const DEFAULT_RING_THICKNESS = 45;
+const DEFAULT_CONNECTION_DIST = 50;
+const DEFAULT_REPEL_DIST = 100;
+const DEFAULT_REPEL_STRENGTH = 5;
 const BREATH_SPEED = 0.0015;
-const BREATH_AMOUNT = 18;
+const DEFAULT_BREATH_AMOUNT = 18;
 
 interface Particle {
   x: number;
@@ -42,10 +42,20 @@ const PALETTE: [number, number, number][] = [
   [80, 200, 150],  // soft emerald
 ];
 
-export default function ParticleRing() {
+export default function ParticleRing({ size }: { size?: number } = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: -1000, y: -1000 });
   const rafRef = useRef<number>(0);
+
+  const CANVAS_SIZE = size || DEFAULT_CANVAS_SIZE;
+  const scale = CANVAS_SIZE / DEFAULT_CANVAS_SIZE;
+  const PARTICLE_COUNT = Math.round(DEFAULT_PARTICLE_COUNT * scale);
+  const RING_RADIUS = DEFAULT_RING_RADIUS * scale;
+  const RING_THICKNESS = DEFAULT_RING_THICKNESS * scale;
+  const CONNECTION_DIST = DEFAULT_CONNECTION_DIST * scale;
+  const REPEL_DIST = DEFAULT_REPEL_DIST * scale;
+  const REPEL_STRENGTH = DEFAULT_REPEL_STRENGTH * scale;
+  const BREATH_AMOUNT = DEFAULT_BREATH_AMOUNT * scale;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -197,7 +207,7 @@ export default function ParticleRing() {
     return () => {
       cancelAnimationFrame(rafRef.current);
     };
-  }, []);
+  }, [CANVAS_SIZE, scale, PARTICLE_COUNT, RING_RADIUS, RING_THICKNESS, CONNECTION_DIST, REPEL_DIST, REPEL_STRENGTH, BREATH_AMOUNT]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
