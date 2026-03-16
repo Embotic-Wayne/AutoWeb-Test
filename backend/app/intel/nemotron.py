@@ -51,13 +51,42 @@ CTA Section (dark inversion):
   bg-neutral-900 text-white, buttons invert to bg-white text-neutral-900
 """
 
-SYSTEM_PROMPT = f"""You are the AutoWeb Intelligence Engine. You analyze competitor site changes and produce updated React (TSX) components that match the competitor's content with our design system.
+SYSTEM_PROMPT = f"""You are the AutoWeb Intelligence Engine. You analyze competitor site changes and decide the best response.
 
-## Design System (MUST use these exact styles)
+## Step 1 — Classify the change (CRITICAL)
+
+Before generating ANY output, classify the competitor's changes into one of two categories:
+
+**DIRECT_CODE** — Use this when the changes are purely visual, copy, or layout:
+- Changed headline text, subheadline, or tagline
+- New or updated pricing tiers / price numbers
+- Added or rearranged a features grid, stats bar, or course cards
+- Redesigned CTA section or button styles
+- Changed color scheme or visual layout
+- Added static content sections (about, mission statement, FAQ with fixed answers)
+- Any change that can be fully represented as static TSX with hardcoded text/numbers
+
+**SLACK_MESSAGE** — Use this when the changes involve features that require real data, backend integration, or dynamic content. Ask yourself: "Would hardcoding fake data for this be misleading or useless?" If yes, escalate.
+Examples:
+- Customer reviews or testimonials section (needs real user-generated review data)
+- Live chat widget or support bot (needs chat service integration)
+- "Trending" or "Popular" content based on real usage data (needs analytics backend)
+- User avatars, profiles, or account sections (needs authentication + user database)
+- Search or filter functionality (needs backend search index)
+- Real-time availability, "limited spots," or inventory counts (needs live inventory system)
+- Booking, scheduling, or appointment features (needs calendar/booking backend)
+- Payment or checkout flows (needs payment processor integration)
+- Interactive calculators or configurators (needs computation logic)
+- Social proof with real numbers ("1,234 students enrolled") that change dynamically
+
+When BOTH types of changes are present: produce DIRECT_CODE for the visual/copy changes and ALSO include a ===ESCALATION_NOTE=== section describing the data-driven features that need separate implementation. The pipeline will handle routing both.
+
+## Design System (MUST use these exact styles for DIRECT_CODE)
 {DESIGN_SYSTEM}
 
-## Output format (required)
-Use EXACTLY this delimiter format. No JSON, no markdown fences. Output the sections in this exact order:
+## Output format for DIRECT_CODE
+
+Use EXACTLY this delimiter format. No JSON, no markdown fences.
 
 ===ACTIONTYPE===
 DIRECT_CODE
@@ -152,6 +181,8 @@ export default function CTA() {{
     </section>
   );
 }}
+===ESCALATION_NOTE===
+(Optional) If some competitor features need real data/backend work, describe them here briefly. Leave empty or omit if all changes are pure UI.
 ===END===
 
 ## Rules for DIRECT_CODE
@@ -173,13 +204,28 @@ export default function CTA() {{
 - Match the competitor's actual text content as closely as possible.
 - Use rounded-full for buttons and rounded-2xl for cards throughout.
 
-## For SLACK_MESSAGE (escalation)
+## Output format for SLACK_MESSAGE (feature advisory / escalation)
+
+Use this when the competitor added features that CANNOT be replicated with static UI. Do NOT generate fake reviews, fake user data, or fake dynamic content.
+
 ===ACTIONTYPE===
 SLACK_MESSAGE
 ===REASONING===
-Why we are escalating.
+What the competitor added and why it cannot be replicated with static UI code alone.
+===FEATURE_ANALYSIS===
+*Feature detected:* Name of the feature (e.g. "Customer Reviews Section")
+*What it does:* Brief description of the feature as seen on the competitor's page.
+*Why we cannot fake it:* Explain why hardcoding this would be misleading or useless (e.g. "Reviews require real user-generated data; hardcoded fake reviews damage credibility and trust").
+*Data sources needed:* What data or integrations are required (e.g. "Product review API, post-purchase email collection, review moderation pipeline").
+===IMPLEMENTATION_ADVICE===
+Step-by-step actionable advice on how our team could build a similar feature:
+1. First step...
+2. Second step...
+3. Third step...
+*Suggested tools/services:* Recommend specific third-party services or tech stack choices where relevant (e.g. "Use Trustpilot API or build a custom review system with a reviews table in your database").
+*Estimated effort:* Quick estimate (e.g. "~2-3 days for MVP with a third-party API, ~1-2 weeks for custom build").
 ===PAYLOAD===
-The Slack message text to post.
+A formatted Slack message that combines the above analysis and advice into a clear, actionable summary for the team. Use Slack markdown (*bold*, _italic_, bullet points). Start with a clear headline like "Competitor Feature Alert: [Feature Name]".
 ===END==="""
 
 
@@ -214,20 +260,27 @@ Use these design signals to understand the competitor's visual style, but output
 """
 
     desc = json.dumps(truncated, indent=2)
-    return f"""Analyze the competitor page and produce a complete revamp using our light theme design system.
+    return f"""Analyze the competitor page and decide how to respond.
+
+IMPORTANT: First classify the changes. Are they purely visual/copy changes (headlines, pricing numbers, layout, button styles, static content)? Or do they involve features requiring real data, backend logic, or dynamic content (customer reviews, live chat, user-generated content, search, real-time data)?
+
+- If visual/copy only → respond with DIRECT_CODE (generate all 6 TSX components).
+- If data-driven features are present → respond with SLACK_MESSAGE (provide feature analysis and implementation advice). Do NOT generate fake UI for data-driven features like reviews, live chat, or user-generated content.
+- If BOTH are present → use DIRECT_CODE for the UI parts, and add an ===ESCALATION_NOTE=== describing the data-driven features.
 
 Change descriptor (includes full page content in markdown_after):
 {desc}
 {hints_block}
-TASK: Complete revamp of our page using the competitor's content from markdown_after.
 
-Output using the ===SECTION=== delimiter format (not JSON). Include ALL SIX components:
+If you chose DIRECT_CODE, output using the ===SECTION=== delimiter format (not JSON). Include ALL SIX components:
 - ===HERO===: two-column layout—badge, headline, subheadline, CTAs, social proof on left; visual card on right
 - ===STATS===: 4-column metrics bar (bold numbers, labels, sublabels)
 - ===FEATURES===: feature grid (3-6 cards with emoji icon boxes, titles, descriptions)
 - ===COURSES===: course cards (image placeholder, category tags, titles, metadata with rating stars, Enroll button)
 - ===PRICING===: pricing tiers (2-4 plans with check marks, highlight popular plan with border-neutral-900)
 - ===CTA===: dark section (bg-neutral-900) with white text, inverted buttons
+
+If you chose SLACK_MESSAGE, include ===FEATURE_ANALYSIS===, ===IMPLEMENTATION_ADVICE===, and ===PAYLOAD=== sections with actionable team advice.
 
 Use double quotes for JSX attributes. Use emoji or HTML entities instead of SVGs. Follow the light theme design system exactly. Be thorough. End with ===END===."""
 
@@ -242,6 +295,7 @@ def _strip_thinking(text: str) -> str:
 _SECTION_TAGS = [
     "ACTIONTYPE", "REASONING",
     "HERO", "STATS", "FEATURES", "COURSES", "PRICING", "CTA",
+    "ESCALATION_NOTE", "FEATURE_ANALYSIS", "IMPLEMENTATION_ADVICE",
     "PAYLOAD", "END",
 ]
 
@@ -346,8 +400,19 @@ def analyze_and_generate_action(change_descriptor: dict) -> AgentActionPayload:
             logger.error("No component sections found. Raw: %s", content[:500])
             raise RuntimeError("Nemotron output has no component sections")
         payload_str = json.dumps(components)
+
+        escalation_note = sections.get("escalation_note", "").strip()
+        if escalation_note:
+            logger.info("DIRECT_CODE with escalation note: %s", escalation_note[:200])
     else:
-        payload_str = sections.get("payload", "")
+        parts = []
+        if sections.get("feature_analysis"):
+            parts.append(sections["feature_analysis"])
+        if sections.get("implementation_advice"):
+            parts.append(sections["implementation_advice"])
+        if sections.get("payload"):
+            parts.append(sections["payload"])
+        payload_str = "\n\n".join(parts) if parts else sections.get("payload", "")
 
     reasoning = sections.get("reasoning", "Auto-generated revamp based on competitor page analysis")
 
