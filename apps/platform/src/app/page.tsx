@@ -69,9 +69,10 @@ const COMPETITOR_STEPS = [
 ];
 
 const APPROVAL_STEPS = [
-  { status: "in_progress", reasoning: "Merging PR into main branch...", delay: 0 },
-  { status: "merged", reasoning: "PR merged successfully. Deploying to preview...", delay: 1500 },
-  { status: "ready", reasoning: "Deployment complete. Changes are now live.", delay: 2000 },
+  { status: "in_progress", reasoning: "Merging PR into main branch on GitHub...", delay: 0 },
+  { status: "merged", reasoning: "PR merged successfully on GitHub. Triggering Vercel deployment...", delay: 1500 },
+  { status: "in_progress", reasoning: "Vercel build started \u2014 compiling Next.js application...", delay: 2000 },
+  { status: "ready", reasoning: "Vercel deployment succeeded. Changes are now live in production.", delay: 2000 },
 ];
 
 const PERSONA_RESEARCH_STEPS = [
@@ -81,6 +82,15 @@ const PERSONA_RESEARCH_STEPS = [
   { text: "Identified secondary segment: Students arriving via discount/affiliate platforms", delay: 1800 },
   { text: "Generating persona profiles with UTM mapping, messaging, and CTA strategy...", delay: 2000 },
   { text: "Persona playbook ready \u2014 2 personas generated: Teacher and Student", delay: 1500 },
+];
+
+const SEO_RESEARCH_STEPS = [
+  { text: "Crawling Learnify site for current meta tags, headings, and structured data...", delay: 0 },
+  { text: "Analyzing competitor SEO signals from taskmaster.ai...", delay: 1800 },
+  { text: "Extracting high-value keywords: real-time site ops, agentic deployment, competitive response AI", delay: 2000 },
+  { text: "Generating optimized title, H1, and meta description variants...", delay: 2000 },
+  { text: "Adding GEO structured data for AI model summarization (ChatGPT, Perplexity)...", delay: 1800 },
+  { text: "SEO/GEO optimization plan ready \u2014 3 keyword injections, updated meta tags", delay: 1500 },
 ];
 
 /* ── Hard-coded diff content for modal ── */
@@ -115,13 +125,42 @@ const PERSONALIZATION_DIFF = {
 
 const COMPETITOR_DIFF = {
   title: "PR #43: feat(pricing): add competitive pricing table",
-  file: "apps/project-flow/src/app/page.tsx",
+  file: "apps/project-flow/src/components/ai-generated/Pricing.tsx",
   lines: [
-    { type: "context", text: '   <Features />' },
-    { type: "context", text: '   <Courses />' },
-    { type: "added", text: '   <Pricing />' },
-    { type: "context", text: '   <CTA />' },
-    { type: "context", text: '   <Footer />' },
+    { type: "added", text: 'export default function Pricing() {' },
+    { type: "added", text: '  const plans = [' },
+    { type: "added", text: '    { name: "Basic", price: "$29", period: "/mo",' },
+    { type: "added", text: '      features: ["All beginner courses", "Hands-on projects",' },
+    { type: "added", text: '        "Community forum", "Weekly webinars"] },' },
+    { type: "added", text: '    { name: "Pro", price: "$49", period: "/mo", popular: true,' },
+    { type: "added", text: '      features: ["All Basic features", "Advanced courses",' },
+    { type: "added", text: '        "Live mentorship", "Certificate of completion"] },' },
+    { type: "added", text: '    { name: "Enterprise", price: "Custom", period: "",' },
+    { type: "added", text: '      features: ["All Pro features", "Dedicated manager",' },
+    { type: "added", text: '        "On-site training", "Custom curriculum"] },' },
+    { type: "added", text: '  ];' },
+    { type: "added", text: '' },
+    { type: "added", text: '  return (' },
+    { type: "added", text: '    <section id="pricing" className="border-b bg-white px-6 py-20">' },
+    { type: "added", text: '      <h2 className="text-3xl font-bold">' },
+    { type: "added", text: '        Choose the plan that fits you' },
+    { type: "added", text: '      </h2>' },
+    { type: "added", text: '      <div className="mt-14 grid gap-8 sm:grid-cols-3">' },
+    { type: "added", text: '        {plans.map((p) => (' },
+    { type: "added", text: '          <div key={p.name} className={`rounded-2xl border p-8' },
+    { type: "added", text: '            ${p.popular ? "border-neutral-900 shadow-lg"' },
+    { type: "added", text: '              : "border-neutral-200"}`}>' },
+    { type: "added", text: '            <h3>{p.name}</h3>' },
+    { type: "added", text: '            <div className="text-3xl font-bold">' },
+    { type: "added", text: '              {p.price}<span>{p.period}</span>' },
+    { type: "added", text: '            </div>' },
+    { type: "added", text: '            <ul>{p.features.map((f) => <li key={f}>{f}</li>)}</ul>' },
+    { type: "added", text: '          </div>' },
+    { type: "added", text: '        ))}' },
+    { type: "added", text: '      </div>' },
+    { type: "added", text: '    </section>' },
+    { type: "added", text: '  );' },
+    { type: "added", text: '}' },
   ],
 };
 
@@ -188,7 +227,7 @@ export default function PlatformPage() {
   const [activities, setActivities] = useState<ActivityRecord[]>([]);
   const [dangerousMode, setDangerousMode] = useState(false);
   const [runningAgent, setRunningAgent] = useState(false);
-  const [agentUrl, setAgentUrl] = useState("http://localhost:3004");
+  const [agentUrl, setAgentUrl] = useState("");
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -200,22 +239,62 @@ export default function PlatformPage() {
   const [personaResearchDone, setPersonaResearchDone] = useState(false);
   const [personaResearchRunning, setPersonaResearchRunning] = useState(false);
   const [personaResearchLog, setPersonaResearchLog] = useState<string[]>([]);
+  const [seoResearchDone, setSeoResearchDone] = useState(false);
+  const [seoResearchRunning, setSeoResearchRunning] = useState(false);
+  const [seoResearchLog, setSeoResearchLog] = useState<string[]>([]);
+  const [docParsingRunning, setDocParsingRunning] = useState(false);
+  const [docParsingLog, setDocParsingLog] = useState<string[]>([]);
   const demoTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const handleMockParse = (fileName: string) => {
     setUploadedFileName(fileName);
-    setCompanyName("Learnify");
-    setCompanyUrl("https://learnify.io");
-    setCompanyIndustry("EdTech");
-    setCompanyValue("World-class online education for teachers and students.");
-    setPersonaData([
-      { key: "teacher", utm_source: "canvas-lms", headline: "Empower your classroom with smarter tools", subheadline: "Automate grading, track progress, and focus on what matters — teaching.", cta: "Start Your Free Trial", ctaHref: "/signup?plan=educator" },
-      { key: "student", utm_source: "unidays", headline: "Study smarter, not harder", subheadline: "AI-powered study plans, flashcards, and practice tests — all in one place.", cta: "Get Started Free", ctaHref: "/signup?plan=student" },
-    ]);
+    setDocParsingRunning(true);
+    setDocParsingLog([]);
+
+    const steps = [
+      { text: "Reading document...", delay: 0 },
+      { text: "Splitting into chunks for embedding...", delay: 1200 },
+      { text: "Generating vector embeddings with Nemotron...", delay: 1500 },
+      { text: "Storing 24 vectors in knowledge base...", delay: 1800 },
+      { text: "Running RAG query: extracting company profile...", delay: 1500 },
+      { text: "Document parsed successfully", delay: 1200 },
+    ];
+
+    let cumulative = 0;
+    steps.forEach((step, index) => {
+      cumulative += step.delay;
+      const timer = setTimeout(() => {
+        setDocParsingLog((prev) => [...prev, step.text]);
+
+        // On last step, fill in the fields
+        if (index === steps.length - 1) {
+          setTimeout(() => {
+            setCompanyName("Learnify");
+            setTimeout(() => {
+              setCompanyUrl("https://learnify.io");
+              setTimeout(() => {
+                setCompanyIndustry("EdTech");
+                setTimeout(() => {
+                  setCompanyValue("World-class online education for teachers and students.");
+                  setDocParsingRunning(false);
+                  setPersonaData([
+                    { key: "teacher", utm_source: "canvas-lms", headline: "Empower your classroom with smarter tools", subheadline: "Automate grading, track progress, and focus on what matters \u2014 teaching.", cta: "Start Your Free Trial", ctaHref: "/signup?plan=educator" },
+                    { key: "student", utm_source: "unidays", headline: "Study smarter, not harder", subheadline: "AI-powered study plans, flashcards, and practice tests \u2014 all in one place.", cta: "Get Started Free", ctaHref: "/signup?plan=student" },
+                  ]);
+                }, 300);
+              }, 300);
+            }, 300);
+          }, 400);
+        }
+      }, cumulative);
+      demoTimers.current.push(timer);
+    });
   };
 
   const handleClearUpload = () => {
     setUploadedFileName(null);
+    setDocParsingRunning(false);
+    setDocParsingLog([]);
     setCompanyName("");
     setCompanyUrl("");
     setCompanyIndustry("");
@@ -262,6 +341,23 @@ export default function PlatformPage() {
         if (index === PERSONA_RESEARCH_STEPS.length - 1) {
           setPersonaResearchRunning(false);
           setPersonaResearchDone(true);
+        }
+      }, cumulative);
+      demoTimers.current.push(timer);
+    });
+  }, []);
+
+  const handleRunSeoResearch = useCallback(() => {
+    setSeoResearchRunning(true);
+    setSeoResearchLog([]);
+    let cumulative = 0;
+    SEO_RESEARCH_STEPS.forEach((step, index) => {
+      cumulative += step.delay;
+      const timer = setTimeout(() => {
+        setSeoResearchLog((prev) => [...prev, step.text]);
+        if (index === SEO_RESEARCH_STEPS.length - 1) {
+          setSeoResearchRunning(false);
+          setSeoResearchDone(true);
         }
       }, cumulative);
       demoTimers.current.push(timer);
@@ -338,6 +434,11 @@ export default function PlatformPage() {
     setPersonaResearchDone(false);
     setPersonaResearchRunning(false);
     setPersonaResearchLog([]);
+    setSeoResearchDone(false);
+    setSeoResearchRunning(false);
+    setSeoResearchLog([]);
+    setDocParsingRunning(false);
+    setDocParsingLog([]);
     setActivities([]);
     setStatus(null);
     setRunningAgent(false);
@@ -420,8 +521,11 @@ export default function PlatformPage() {
   }, [currentTab, insights, fetchLatestInsights]);
 
   const handleToggleDangerousMode = () => {
-    // Demo mode: toggle locally without API call
-    setDangerousMode((prev) => !prev);
+    setDangerousMode((prev) => {
+      const next = !prev;
+      setAgentMode(next ? "autonomous" : "supervised");
+      return next;
+    });
   };
 
   const handleRunAgent = () => {
@@ -706,19 +810,47 @@ export default function PlatformPage() {
                           </div>
                           {uploadedFileName && (
                             <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--panel)] p-3 text-xs">
-                              <p className="uppercase tracking-[0.2em] text-[var(--muted)]">
-                                Parsed from
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="uppercase tracking-[0.2em] text-[var(--muted)]">
+                                  {docParsingRunning ? "Processing" : "Parsed from"}
+                                </p>
+                                {docParsingRunning && (
+                                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+                                )}
+                              </div>
                               <p className="mt-1 text-sm font-medium text-[var(--ink)]">
                                 {uploadedFileName}
                               </p>
-                              <button
-                                type="button"
-                                onClick={handleClearUpload}
-                                className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]"
-                              >
-                                Clear upload
-                              </button>
+
+                              {/* Parsing animation log */}
+                              {docParsingLog.length > 0 && (
+                                <div className="mt-3 grid gap-1.5">
+                                  {docParsingLog.map((entry, i) => (
+                                    <div
+                                      key={i}
+                                      className="flex items-start gap-2 text-xs"
+                                      style={{ animation: "fadeSlideIn 0.3s ease-out" }}
+                                    >
+                                      <span className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                                        i === docParsingLog.length - 1 && !docParsingRunning
+                                          ? "bg-emerald-500"
+                                          : "bg-sky-400"
+                                      }`} />
+                                      <span className="text-[var(--muted)]">{entry}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {!docParsingRunning && (
+                                <button
+                                  type="button"
+                                  onClick={handleClearUpload}
+                                  className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent)]"
+                                >
+                                  Clear upload
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -852,7 +984,10 @@ export default function PlatformPage() {
                             <button
                               key={mode.id}
                               type="button"
-                              onClick={() => setAgentMode(mode.id as AgentMode)}
+                              onClick={() => {
+                                setAgentMode(mode.id as AgentMode);
+                                setDangerousMode(mode.id === "autonomous");
+                              }}
                               className={`rounded-2xl border px-4 py-4 text-left ${
                                 active
                                   ? "border-[var(--accent)] bg-[var(--accent)]/10"
@@ -1345,50 +1480,109 @@ export default function PlatformPage() {
                   <h2 className="font-editorial text-2xl font-semibold">Search Optimization</h2>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Before</p>
-                    <div className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
-                      <p>Title: Jarvis &mdash; Automate site updates</p>
-                      <p>H1: Competitive monitoring for modern teams</p>
-                      <p>Meta: AI watches competitors and updates your site.</p>
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">After</p>
-                    <div className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
-                      <p>Title: Jarvis &mdash; Real-time competitive response</p>
-                      <p>H1: Ship pricing and messaging updates in 60s</p>
-                      <p>Meta: Autonomous SEO + GEO updates from competitor intel.</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
-                  <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
-                    Keyword Injection
-                  </p>
-                  <div className="mt-4 grid gap-2 text-sm">
-                    {[
-                      { keyword: "real-time site ops", source: "taskmaster.ai/pricing" },
-                      { keyword: "agentic deployment", source: "taskmaster.ai/hero" },
-                      { keyword: "competitive response AI", source: "taskmaster.ai/blog" },
-                    ].map((row) => (
-                      <div
-                        key={row.keyword}
-                        className="grid grid-cols-[1.5fr_1fr] gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
-                      >
-                        <span>{row.keyword}</span>
-                        <span className="text-[var(--muted)]">{row.source}</span>
+                {/* ── Phase 1: Research prompt ── */}
+                {!seoResearchDone && (
+                  <div className="grid gap-4">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6 text-center">
+                      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent)]/10">
+                        <svg viewBox="0 0 24 24" className="h-7 w-7 text-[var(--accent)]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M12 2l7 4v8l-7 4-7-4V6l7-4z" strokeLinejoin="round" />
+                        </svg>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                      <h3 className="text-lg font-semibold">SEO &amp; GEO Optimization</h3>
+                      <p className="mx-auto mt-2 max-w-md text-sm text-[var(--muted)]">
+                        Use Nemotron to analyze your current site SEO, compare against competitor signals,
+                        and generate optimized meta tags, headings, and keyword injections. Includes GEO
+                        structured data for AI model visibility.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleRunSeoResearch}
+                        disabled={seoResearchRunning}
+                        className="mt-6 rounded-2xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {seoResearchRunning ? "Analyzing\u2026" : "Run SEO/GEO Analysis with Nemotron"}
+                      </button>
+                    </div>
 
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">
-                  GEO optimization adds structured data tuned for AI models like ChatGPT, improving
-                  summarization and answer visibility.
-                </div>
+                    {seoResearchLog.length > 0 && (
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
+                        <p className="mb-3 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                          Analysis Progress
+                        </p>
+                        <div className="grid gap-2 text-sm">
+                          {seoResearchLog.map((entry, i) => (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2"
+                              style={{ animation: "fadeSlideIn 0.3s ease-out" }}
+                            >
+                              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-sky-400" />
+                              <span className="text-[var(--muted)]">{entry}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Phase 2: Results ── */}
+                {seoResearchDone && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-900/30 px-3 py-1 text-xs font-semibold text-emerald-400">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                        Generated by Nemotron
+                      </span>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-2" style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
+                        <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Before</p>
+                        <div className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
+                          <p>Title: Jarvis &mdash; Automate site updates</p>
+                          <p>H1: Competitive monitoring for modern teams</p>
+                          <p>Meta: AI watches competitors and updates your site.</p>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-emerald-800 bg-emerald-900/10 p-5">
+                        <p className="text-xs uppercase tracking-[0.2em] text-emerald-400">After (Recommended)</p>
+                        <div className="mt-3 grid gap-2 text-sm text-[var(--muted)]">
+                          <p>Title: Jarvis &mdash; Real-time competitive response</p>
+                          <p>H1: Ship pricing and messaging updates in 60s</p>
+                          <p>Meta: Autonomous SEO + GEO updates from competitor intel.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5" style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
+                      <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
+                        Keyword Injection
+                      </p>
+                      <div className="mt-4 grid gap-2 text-sm">
+                        {[
+                          { keyword: "real-time site ops", source: "taskmaster.ai/pricing" },
+                          { keyword: "agentic deployment", source: "taskmaster.ai/hero" },
+                          { keyword: "competitive response AI", source: "taskmaster.ai/blog" },
+                        ].map((row) => (
+                          <div
+                            key={row.keyword}
+                            className="grid grid-cols-[1.5fr_1fr] gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+                          >
+                            <span>{row.keyword}</span>
+                            <span className="text-[var(--muted)]">{row.source}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]" style={{ animation: "fadeSlideIn 0.4s ease-out" }}>
+                      GEO optimization adds structured data tuned for AI models like ChatGPT, improving
+                      summarization and answer visibility.
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
