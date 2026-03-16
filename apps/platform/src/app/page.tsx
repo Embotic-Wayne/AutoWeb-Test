@@ -423,11 +423,23 @@ export default function PlatformPage() {
     setDangerousMode((prev) => !prev);
   };
 
-  const handleRunAgent = () => {
-    // Demo mode: run hard-coded competitor workflow instead of real API
+  const handleRunAgent = async () => {
+    // Demo mode: run hard-coded competitor workflow and also ping backend to send Slack message
     setRunningAgent(true);
     setDemoPreviewUrls(null);
     setStatus("Agent triggered \u2014 watch the activity log.");
+
+    // Fire and forget Slack demo call; ignore errors so the front-end demo keeps working
+    try {
+      await fetch(`${API_URL}/agent/demo-slack`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ competitorUrl: agentUrl }),
+      });
+    } catch {
+      // backend may be offline; demo animation still runs
+    }
+
     runDemoWorkflow(COMPETITOR_STEPS, "competitor");
     setDemoWorkflowState("competitor-running");
     setTimeout(() => setRunningAgent(false), 1000);

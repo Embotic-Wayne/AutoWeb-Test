@@ -223,12 +223,49 @@ def run_pipeline(payload: AgentActionPayload) -> None:
             },
         )
 
-        # Notify Slack that a PR was opened (optional; skip if webhook not set)
+        # Notify Slack that a PR was opened (optional; skip if webhook not set).
+        # We enrich the message with:
+        # - target URL
+        # - changed sections
+        # - PR URL and branch
+        # - An ethics note if the competitor page has a reviews/testimonials section.
         if settings.slack_webhook_url:
             try:
+                meta = activity_store.get_activity(action_id) or {}
+                target_url = meta.get("target_url")
+                changed_sections = meta.get("changed_sections") or []
+                has_reviews_section = bool(meta.get("has_reviews_section"))
+
+                summary_lines: list[str] = [
+                    "*New AutoWeb PR opened from agent run.*",
+                ]
+                if target_url:
+                    summary_lines.append(f"- *Target URL:* {target_url}")
+                summary_lines.append(f"- *PR:* {gh_result['pr_url']}")
+                summary_lines.append(f"- *Branch:* `{gh_result['branch']}`")
+                summary_lines.append(f"- *Action ID:* `{action_id}`")
+                if changed_sections:
+                    joined = ", ".join(changed_sections)
+                    summary_lines.append(f"- *Changed sections detected:* {joined}")
+
+                if has_reviews_section:
+                    summary_lines.extend(
+                        [
+                            "",
+                            "*Heads up: competitor has a reviews/testimonials section.*",
+                            "We should not fabricate reviews or testimonials. To build similar social proof ethically, consider:",
+                            "- Running short satisfaction or outcome surveys with current users.",
+                            "- Interviewing past or existing clients and asking for permission to quote them.",
+                            "- Summarizing anonymized, aggregate results (e.g., completion rates, NPS, time saved) instead of individual quotes.",
+                            "- Asking customer-facing teams (sales, support, customer success) for real stories and permissioned quotes.",
+                        ]
+                    )
+
+                suggested_text = "\n".join(summary_lines)
+
                 slack_service.send_slack_message(
                     reasoning=data["reasoning"],
-                    suggested_text=f"PR opened: {gh_result['pr_url']}\nBranch: `{gh_result['branch']}`\nAction ID: `{action_id}`",
+                    suggested_text=suggested_text,
                 )
                 activity_store.upsert_activity(
                     action_id,

@@ -3,16 +3,52 @@ Orchestration: run the Intelligence Engine pipeline.
 1. Firecrawl scrape target URL
 2. Diff vs previous state
 3. If changes: Nemotron produces AgentAction -> validate -> POST to webhook
-4. Update stored state
+4. Update stored state + annotate activity metadata for downstream services
 """
-import httpx
+import logging
 from datetime import datetime, timezone
 
+import httpx
+
 from app.config import settings
-from app.services.firecrawl import scrape_url
-from app.services.state import load_previous_crawl, save_crawl
 from app.intel.diff import diff_crawl
 from app.intel.nemotron import analyze_and_generate_action
+from app.services import activity_store
+from app.services.firecrawl import scrape_url
+from app.services.state import load_previous_crawl, save_crawl
+
+logger = logging.getLogger(__name__)
+
+
+def _detect_reviews_section(descriptor: dict | None) -> bool:
+    """
+    Heuristic to detect if the competitor page includes a reviews/testimonials section.
+    Based on markdown_after content from the crawl diff.
+    """
+    if not descriptor:
+        return False
+    markdown_after = descriptor.get("markdown_after")
+    if not isinstance(markdown_after, str):
+        return False
+
+    text = markdown_after.lower()
+    # Simple keyword heuristics; we intentionally keep this transparent and deterministic.
+    review_keywords = [
+        "reviews",
+        "review",
+        "testimonials",
+        "testimonial",
+        "customer stories",
+        "customer story",
+        "what our customers say",
+        "what our clients say",
+    ]
+    if any(k in text for k in review_keywords):
+        return True
+
+    # Fallback: look for common star-rating glyphs.
+    star_snippets = ["★★★★★", "★★★★☆", "5/5", "4.9/5", "4.8/5"]
+    return any(snippet in markdown_after for snippet in star_snippets)
 
 
 def run_intel(target_url: str) -> dict:
@@ -43,6 +79,22 @@ def run_intel(target_url: str) -> dict:
     # 3. Nemotron
     action = analyze_and_generate_action(descriptor)
     result["action"] = action.model_dump()
+
+    # 3a. Persist high-level context for downstream services (Slack, activity log, etc.).
+    # This lets the deployment pipeline enrich Slack notifications with URL, sections,
+    # and whether we detected a reviews/testimonials area on the competitor page.
+    try:
+        meta_updates: dict = {
+            "timestamp": crawl["scanned_at"],
+            "target_url": target_url,
+            "changed_sections": descriptor.get("changed_sections", []),
+        }
+        if _detect_reviews_section(descriptor):
+            meta_updates["has_reviews_section"] = True
+        activity_store.upsert_activity(action.id, meta_updates)
+    except Exception as e:
+        # This metadata is best-effort; do not fail the intel run if it breaks.
+        logger.warning("Failed to persist intel metadata for %s: %s", getattr(action, "id", "?"), e)
 
     # 4. POST to webhook
     webhook_url = f"{settings.backend_base_url.rstrip('/')}/agent/webhook"
