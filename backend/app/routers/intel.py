@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.intel.run import run_intel
+from app.services.state import load_previous_crawl
 
 router = APIRouter()
 
@@ -30,3 +31,22 @@ def intel_run(body: IntelRunRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/latest")
+def intel_latest():
+    """
+    Return the most recent stored crawl (if any).
+    """
+    crawl = load_previous_crawl()
+    if not crawl:
+        raise HTTPException(status_code=404, detail="No crawl available")
+
+    return {
+        "url": crawl.get("url"),
+        "scanned_at": crawl.get("scanned_at"),
+        "hero": crawl.get("hero") or {},
+        "features": crawl.get("features") or [],
+        "pricing": crawl.get("pricing") or [],
+        "keywords": crawl.get("keywords") or [],
+    }
