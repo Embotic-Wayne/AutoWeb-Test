@@ -1,6 +1,15 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? match[1] : null;
+}
 
 const Hero = dynamic(
   () => import("@/components/ai-generated/Hero").then((m) => m.default),
@@ -75,6 +84,12 @@ const CTA = dynamic(
 );
 
 export default function ProjectFlowPage() {
+  const [showPricing, setShowPricing] = useState(false);
+
+  useEffect(() => {
+    setShowPricing(getCookie("autoweb-demo-pricing-visible") === "true");
+  }, []);
+
   return (
     <main className="min-h-screen bg-white">
       <Header />
@@ -82,7 +97,7 @@ export default function ProjectFlowPage() {
       <Stats />
       <Features />
       <Courses />
-      <Pricing />
+      {showPricing && <Pricing />}
       <CTA />
       <Footer />
     </main>

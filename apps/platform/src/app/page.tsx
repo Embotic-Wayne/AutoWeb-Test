@@ -1,8 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+/* ── Cookie helpers (shared across ports on same domain) ── */
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${value};path=/;max-age=86400`;
+}
+function deleteCookie(name: string) {
+  document.cookie = `${name}=;path=/;max-age=0`;
+}
 
 type DashboardTab =
   | "onboarding"
@@ -15,6 +23,14 @@ type InsightsTab = "messaging" | "features" | "pricing" | "keywords";
 type PersonaTab = "teacher" | "student";
 type OnboardingStep = 1 | 2 | 3 | 4;
 type AgentMode = "supervised" | "autonomous";
+type DemoWorkflowState =
+  | "idle"
+  | "personalization-running"
+  | "personalization-diff"
+  | "personalization-approved"
+  | "competitor-running"
+  | "competitor-diff"
+  | "competitor-approved";
 
 interface ActivityRecord {
   id: string;
@@ -28,6 +44,85 @@ interface ActivityRecord {
   branch?: string;
   error?: string;
 }
+
+/* ── Hard-coded demo workflow step sequences ── */
+const PERSONALIZATION_STEPS = [
+  { status: "analyzing", reasoning: "Analyzing UTM parameters and visitor segments...", delay: 0 },
+  { status: "analyzing", reasoning: "Identified 2 personas: Teacher (canvas-lms) and Student (unidays)", delay: 1500 },
+  { status: "generating", reasoning: "Generating persona-aware Hero component with conditional rendering...", delay: 2500 },
+  { status: "generating", reasoning: "Creating Next.js middleware for cookie-based persona routing...", delay: 2000 },
+  { status: "in_progress", reasoning: "Writing Hero.tsx with UTM-based headline, subheadline, and CTA variants...", delay: 2000 },
+  { status: "pr_opened", reasoning: "Opening PR #42: feat(personalization): add persona-aware Hero variants", delay: 1500 },
+  { status: "in_progress", reasoning: "Awaiting human approval \u2014 diff ready for review", delay: 1000 },
+];
+
+const COMPETITOR_STEPS = [
+  { status: "analyzing", reasoning: "Scraping competitor site...", delay: 0 },
+  { status: "analyzing", reasoning: "Extracting page structure: Hero, Stats, Features, Pricing, Reviews...", delay: 2000 },
+  { status: "detecting", reasoning: "Detected pricing table on competitor (Free $0, Pro $29, Team $49/user)", delay: 2000 },
+  { status: "detecting", reasoning: "Comparing against Learnify site \u2014 no pricing section found", delay: 1500 },
+  { status: "generating", reasoning: "Generating Pricing component for Learnify (Basic $29, Pro $49, Enterprise Custom)...", delay: 2500 },
+  { status: "generating", reasoning: "Writing Pricing.tsx with 3-tier responsive grid layout...", delay: 2000 },
+  { status: "pr_opened", reasoning: "Opening PR #43: feat(pricing): add competitive pricing table", delay: 1500 },
+  { status: "in_progress", reasoning: "Awaiting human approval \u2014 diff ready for review", delay: 1000 },
+];
+
+const APPROVAL_STEPS = [
+  { status: "in_progress", reasoning: "Merging PR into main branch...", delay: 0 },
+  { status: "merged", reasoning: "PR merged successfully. Deploying to preview...", delay: 1500 },
+  { status: "ready", reasoning: "Deployment complete. Changes are now live.", delay: 2000 },
+];
+
+const PERSONA_RESEARCH_STEPS = [
+  { text: "Analyzing Learnify application context and value proposition...", delay: 0 },
+  { text: "Scanning industry data for EdTech visitor segments...", delay: 1500 },
+  { text: "Identified primary segment: Educators (K-12, Higher Ed) arriving via LMS integrations", delay: 2000 },
+  { text: "Identified secondary segment: Students arriving via discount/affiliate platforms", delay: 1800 },
+  { text: "Generating persona profiles with UTM mapping, messaging, and CTA strategy...", delay: 2000 },
+  { text: "Persona playbook ready \u2014 2 personas generated: Teacher and Student", delay: 1500 },
+];
+
+/* ── Hard-coded diff content for modal ── */
+const PERSONALIZATION_DIFF = {
+  title: "PR #42: feat(personalization): add persona-aware Hero variants",
+  file: "apps/project-flow/src/components/ai-generated/Hero.tsx",
+  lines: [
+    { type: "context", text: ' export default function Hero() {' },
+    { type: "removed", text: '   return (' },
+    { type: "removed", text: '     <h1>Learn without limits, grow without boundaries.</h1>' },
+    { type: "removed", text: '     <p>Access world-class education from top instructors.</p>' },
+    { type: "removed", text: '     <a href="/signup">Start learning free</a>' },
+    { type: "added", text: '   const [persona, setPersona] = useState("default");' },
+    { type: "added", text: '' },
+    { type: "added", text: '   useEffect(() => {' },
+    { type: "added", text: '     const params = new URLSearchParams(window.location.search);' },
+    { type: "added", text: '     const utm = params.get("utm_source");' },
+    { type: "added", text: '     if (utm === "canvas-lms") setPersona("teacher");' },
+    { type: "added", text: '     else if (utm === "unidays") setPersona("student");' },
+    { type: "added", text: '   }, []);' },
+    { type: "added", text: '' },
+    { type: "added", text: '   const content = PERSONA_CONTENT[persona];' },
+    { type: "added", text: '' },
+    { type: "added", text: '   return (' },
+    { type: "added", text: '     <h1>{content.headline}</h1>' },
+    { type: "added", text: '     <p>{content.subheadline}</p>' },
+    { type: "added", text: '     <a href={content.ctaHref}>{content.cta}</a>' },
+    { type: "context", text: '   );' },
+    { type: "context", text: ' }' },
+  ],
+};
+
+const COMPETITOR_DIFF = {
+  title: "PR #43: feat(pricing): add competitive pricing table",
+  file: "apps/project-flow/src/app/page.tsx",
+  lines: [
+    { type: "context", text: '   <Features />' },
+    { type: "context", text: '   <Courses />' },
+    { type: "added", text: '   <Pricing />' },
+    { type: "context", text: '   <CTA />' },
+    { type: "context", text: '   <Footer />' },
+  ],
+};
 
 interface InsightsData {
   url?: string;
@@ -94,6 +189,17 @@ export default function PlatformPage() {
   const [runningAgent, setRunningAgent] = useState(false);
   const [agentUrl, setAgentUrl] = useState("http://localhost:3004");
   const [insights, setInsights] = useState<InsightsData | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  /* ── Demo workflow state ── */
+  const [demoWorkflowState, setDemoWorkflowState] = useState<DemoWorkflowState>("idle");
+  const [demoLogEntries, setDemoLogEntries] = useState<ActivityRecord[]>([]);
+  const [demoShowDiff, setDemoShowDiff] = useState<"personalization" | "competitor" | null>(null);
+  const [demoPreviewUrls, setDemoPreviewUrls] = useState<{ label: string; url: string }[] | null>(null);
+  const [personaResearchDone, setPersonaResearchDone] = useState(false);
+  const [personaResearchRunning, setPersonaResearchRunning] = useState(false);
+  const [personaResearchLog, setPersonaResearchLog] = useState<string[]>([]);
+  const demoTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const handleMockParse = (fileName: string) => {
     setUploadedFileName(fileName);
@@ -116,46 +222,155 @@ export default function PlatformPage() {
     setPersonaData(null);
   };
 
-  const handleLaunchAgent = async () => {
-    if (!personaData) return;
-    setBusy(true);
-    try {
-      if (agentMode === "autonomous") {
-        await fetch("http://localhost:8000/agent/dangerous-mode", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dangerousMode: true }),
-        });
-      }
-      await fetch("http://localhost:8000/personalization/deploy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personas: personaData,
-          default_headline: "Learn without limits, grow without boundaries.",
-          default_subheadline: "Access world-class education from top instructors.",
-          default_cta: "Start learning free",
-          default_ctaHref: "/signup",
-        }),
+  /* ── Demo workflow engine ── */
+  const runDemoWorkflow = useCallback(
+    (steps: typeof PERSONALIZATION_STEPS, workflowId: string) => {
+      let cumulative = 0;
+      steps.forEach((step, index) => {
+        cumulative += step.delay;
+        const timer = setTimeout(() => {
+          const entry: ActivityRecord = {
+            id: `${workflowId}-${index}`,
+            timestamp: new Date().toISOString(),
+            status: step.status,
+            reasoning: step.reasoning,
+          };
+          setDemoLogEntries((prev) => [entry, ...prev]);
+
+          if (index === steps.length - 1) {
+            setDemoShowDiff(workflowId === "personalization" ? "personalization" : "competitor");
+            setDemoWorkflowState(
+              workflowId === "personalization" ? "personalization-diff" : "competitor-diff"
+            );
+          }
+        }, cumulative);
+        demoTimers.current.push(timer);
       });
-      setCurrentTab("activity");
-    } catch (err) {
-      console.error("Launch failed:", err);
-    } finally {
-      setBusy(false);
+    },
+    []
+  );
+
+  const handleRunPersonaResearch = useCallback(() => {
+    setPersonaResearchRunning(true);
+    setPersonaResearchLog([]);
+    let cumulative = 0;
+    PERSONA_RESEARCH_STEPS.forEach((step, index) => {
+      cumulative += step.delay;
+      const timer = setTimeout(() => {
+        setPersonaResearchLog((prev) => [...prev, step.text]);
+        if (index === PERSONA_RESEARCH_STEPS.length - 1) {
+          setPersonaResearchRunning(false);
+          setPersonaResearchDone(true);
+        }
+      }, cumulative);
+      demoTimers.current.push(timer);
+    });
+  }, []);
+
+  const handleDemoApprove = useCallback(() => {
+    const isPersonalization = demoShowDiff === "personalization";
+    setDemoShowDiff(null);
+
+    // Set localStorage flag for cross-app communication
+    if (isPersonalization) {
+      setCookie("autoweb-demo-persona-active", "true");
+      setDemoWorkflowState("personalization-approved");
+    } else {
+      setCookie("autoweb-demo-pricing-visible", "true");
+      setDemoWorkflowState("competitor-approved");
     }
+
+    // Animate approval steps
+    let cumulative = 0;
+    APPROVAL_STEPS.forEach((step, index) => {
+      cumulative += step.delay;
+      const timer = setTimeout(() => {
+        const entry: ActivityRecord = {
+          id: `approval-${isPersonalization ? "p" : "c"}-${index}`,
+          timestamp: new Date().toISOString(),
+          status: step.status,
+          reasoning: step.reasoning,
+        };
+        setDemoLogEntries((prev) => [entry, ...prev]);
+
+        // On last step, show preview URLs
+        if (index === APPROVAL_STEPS.length - 1) {
+          if (isPersonalization) {
+            setDemoPreviewUrls([
+              { label: "Teacher View", url: "http://localhost:3002/?utm_source=canvas-lms" },
+              { label: "Student View", url: "http://localhost:3002/?utm_source=unidays" },
+            ]);
+          } else {
+            setDemoPreviewUrls([
+              { label: "Learnify (with Pricing)", url: "http://localhost:3002" },
+            ]);
+          }
+          setIframeKey((k) => k + 1);
+        }
+      }, cumulative);
+      demoTimers.current.push(timer);
+    });
+  }, [demoShowDiff]);
+
+  const handleDemoDeny = useCallback(() => {
+    const entry: ActivityRecord = {
+      id: `deny-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      status: "failed",
+      reasoning: "PR rejected by reviewer.",
+    };
+    setDemoLogEntries((prev) => [entry, ...prev]);
+    setDemoShowDiff(null);
+    setDemoWorkflowState("idle");
+  }, []);
+
+  const handleResetDemo = useCallback(() => {
+    // Clear all timers
+    demoTimers.current.forEach(clearTimeout);
+    demoTimers.current = [];
+
+    // Clear demo state
+    setDemoLogEntries([]);
+    setDemoWorkflowState("idle");
+    setDemoShowDiff(null);
+    setDemoPreviewUrls(null);
+    setPersonaResearchDone(false);
+    setPersonaResearchRunning(false);
+    setPersonaResearchLog([]);
+    setActivities([]);
+    setStatus(null);
+    setRunningAgent(false);
+    setBusy(false);
+
+    // Reset onboarding
+    setOnboardingStep(1);
+    setCompanyName("");
+    setCompanyUrl("");
+    setCompanyIndustry("");
+    setCompanyValue("");
+    setUploadedFileName(null);
+    setCompetitors([]);
+    setPersonaData(null);
+    setInsights(null);
+
+    // Clear localStorage flags for cross-app communication
+    deleteCookie("autoweb-demo-pricing-visible");
+    deleteCookie("autoweb-demo-persona-active");
+
+    // Reset iframe
+    setIframeKey((k) => k + 1);
+
+    setCurrentTab("onboarding");
+  }, []);
+
+  const handleLaunchAgent = () => {
+    if (!personaData) return;
+    // Demo mode: skip real API, go to activity tab
+    setCurrentTab("activity");
   };
 
-  const handleResetPersonalization = async () => {
-    setBusy(true);
-    try {
-      await fetch("http://localhost:8000/personalization/reset", { method: "POST" });
-      setCurrentTab("activity");
-    } catch (err) {
-      console.error("Reset failed:", err);
-    } finally {
-      setBusy(false);
-    }
+  const handleResetPersonalization = () => {
+    // Demo mode: no-op (use Reset Demo in settings instead)
   };
 
   const handleAddCompetitor = () => {
@@ -170,11 +385,13 @@ export default function PlatformPage() {
   };
 
   const fetchActivities = useCallback(async () => {
+    // Skip polling when demo workflow is active
+    if (demoLogEntries.length > 0) return;
     try {
       const res = await fetch(`${API_URL}/agent/activity`);
       if (res.ok) setActivities(await res.json());
     } catch { /* backend may be offline */ }
-  }, []);
+  }, [demoLogEntries.length]);
 
   const fetchLatestInsights = useCallback(async () => {
     try {
@@ -193,12 +410,7 @@ export default function PlatformPage() {
     return () => clearInterval(id);
   }, [fetchActivities]);
 
-  useEffect(() => {
-    fetch(`${API_URL}/agent/dangerous-mode`)
-      .then((r) => r.json())
-      .then((d) => setDangerousMode(!!d.dangerousMode))
-      .catch(() => {});
-  }, []);
+  // Demo mode: skip fetching dangerous mode from backend on mount
 
   useEffect(() => {
     if (currentTab === "insights" && !insights) {
@@ -206,46 +418,19 @@ export default function PlatformPage() {
     }
   }, [currentTab, insights, fetchLatestInsights]);
 
-  const handleToggleDangerousMode = async () => {
-    try {
-      const res = await fetch(`${API_URL}/agent/dangerous-mode`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dangerousMode: !dangerousMode }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setDangerousMode(!!data.dangerousMode);
-      }
-    } catch {
-      setStatus("Failed to toggle dangerous mode.");
-    }
+  const handleToggleDangerousMode = () => {
+    // Demo mode: toggle locally without API call
+    setDangerousMode((prev) => !prev);
   };
 
-  const handleRunAgent = async () => {
-    const latestCompetitor = competitors.length ? competitors[competitors.length - 1] : "";
-    const url = latestCompetitor || agentUrl.trim() || "http://localhost:3004";
+  const handleRunAgent = () => {
+    // Demo mode: run hard-coded competitor workflow instead of real API
     setRunningAgent(true);
-    setStatus(null);
-    try {
-      const res = await fetch(`${API_URL}/intel/run`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setStatus(`Agent error: ${err.detail || res.statusText}`);
-      } else {
-        setStatus("Agent triggered — watch the activity log.");
-        fetchActivities();
-        fetchLatestInsights();
-      }
-    } catch {
-      setStatus("Could not reach backend.");
-    } finally {
-      setRunningAgent(false);
-    }
+    setDemoPreviewUrls(null);
+    setStatus("Agent triggered \u2014 watch the activity log.");
+    runDemoWorkflow(COMPETITOR_STEPS, "competitor");
+    setDemoWorkflowState("competitor-running");
+    setTimeout(() => setRunningAgent(false), 1000);
   };
 
   const navigation = [
@@ -728,7 +913,8 @@ export default function PlatformPage() {
             )}
 
             {currentTab === "activity" && (() => {
-              const latest = activities[0] as ActivityRecord | undefined;
+              const displayEntries = demoLogEntries.length > 0 ? demoLogEntries : activities;
+              const latest = displayEntries[0] as ActivityRecord | undefined;
               return (
               <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
                 <div className="flex flex-col gap-4">
@@ -755,7 +941,7 @@ export default function PlatformPage() {
                     />
                     <button
                       type="button"
-                      disabled={runningAgent}
+                      disabled={runningAgent || demoWorkflowState === "competitor-running"}
                       onClick={handleRunAgent}
                       className="rounded-2xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
                     >
@@ -765,15 +951,16 @@ export default function PlatformPage() {
 
                   <div className="h-[380px] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
                     <div className="grid gap-3 text-sm">
-                      {activities.length === 0 && (
+                      {displayEntries.length === 0 && (
                         <p className="text-sm text-[var(--muted)]">
                           No activity yet. Enter a competitor URL above and click Run Agent.
                         </p>
                       )}
-                      {activities.map((entry) => (
+                      {displayEntries.map((entry) => (
                         <div
                           key={entry.id}
                           className="flex items-start gap-3 border-b border-dashed border-[var(--border)] pb-3 last:border-none last:pb-0"
+                          style={{ animation: "fadeSlideIn 0.3s ease-out" }}
                         >
                           <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${statusColor(entry.status)}`} />
                           <div className="flex-1 min-w-0">
@@ -816,44 +1003,47 @@ export default function PlatformPage() {
                     </p>
                     {latest ? (
                       <>
-                        <h3 className="mt-2 text-lg font-semibold">
-                          {latest.actionType === "SLACK_MESSAGE" ? "Slack Escalation" : "Code Update"}
-                        </h3>
+                        <h3 className="mt-2 text-lg font-semibold">Code Update</h3>
                         <p className="mt-2 text-sm text-[var(--muted)]">
                           {latest.reasoning || "\u2014"}
                         </p>
-                        <div className="mt-4 grid gap-2 text-sm text-[var(--muted)]">
-                          {latest.pr_url && (
-                            <p>
-                              PR:{" "}
-                              <a href={latest.pr_url} target="_blank" rel="noreferrer" className="text-[var(--accent)] underline">
-                                {latest.pr_url.split("/").slice(-2).join("/")}
-                              </a>
-                            </p>
-                          )}
-                          {latest.deployment_url && (
-                            <p>
-                              Preview:{" "}
-                              <a
-                                href={latest.deployment_url.startsWith("http") ? latest.deployment_url : `https://${latest.deployment_url}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[var(--accent)] underline"
-                              >
-                                {latest.deployment_url}
-                              </a>
-                            </p>
-                          )}
-                          <p>Status: {latest.status || "\u2014"}</p>
-                        </div>
+                        <p className="mt-2 text-sm text-[var(--muted)]">
+                          Status: {latest.status || "\u2014"}
+                        </p>
                       </>
                     ) : (
                       <p className="mt-2 text-sm text-[var(--muted)]">No deployments yet.</p>
                     )}
                   </div>
 
+                  {/* Demo preview URLs after approval */}
+                  {demoPreviewUrls && (
+                    <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5">
+                      <p className="text-xs uppercase tracking-[0.28em] text-emerald-700">
+                        Live Preview
+                      </p>
+                      <div className="mt-3 grid gap-2">
+                        {demoPreviewUrls.map((link) => (
+                          <a
+                            key={link.url}
+                            href={link.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-medium text-emerald-700 hover:bg-emerald-50 transition-colors"
+                          >
+                            <span className="text-emerald-500">&#8599;</span>
+                            {link.label}
+                            <span className="ml-auto text-xs text-emerald-400 font-mono">{link.url}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5 text-sm text-[var(--muted)]">
-                    Polling every 5s &middot; {activities.length} activities tracked
+                    {demoLogEntries.length > 0
+                      ? `${demoLogEntries.length} demo activities`
+                      : `Polling every 5s \u00b7 ${activities.length} activities tracked`}
                   </div>
                 </div>
               </div>
@@ -956,141 +1146,200 @@ export default function PlatformPage() {
 
             {currentTab === "personalization" && (
               <div className="grid gap-6">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
-                      Personalization
-                    </p>
-                    <h2 className="font-editorial text-2xl font-semibold">Persona Playbook</h2>
-                  </div>
-                  <div className="flex rounded-full border border-[var(--border)] p-1 text-sm">
-                    {[
-                      { id: "teacher", label: "Teacher" },
-                      { id: "student", label: "Student" },
-                    ].map((tab) => {
-                      const active = personaTab === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setPersonaTab(tab.id as PersonaTab)}
-                          className={`rounded-full px-4 py-2 ${
-                            active
-                              ? "bg-[var(--ink)] text-white"
-                              : "text-[var(--muted)]"
-                          }`}
-                        >
-                          {tab.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
+                    Personalization
+                  </p>
+                  <h2 className="font-editorial text-2xl font-semibold">Persona Playbook</h2>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  {[
-                    {
-                      title: "Teacher",
-                      utm: "utm_source=canvas-lms",
-                      hero: "Empower your classroom with smarter tools",
-                      cta: "Start Your Free Trial",
-                      proof: "Trusted by 10,000+ educators worldwide",
-                      emphasis: "Grading · Curriculum · Student analytics",
-                    },
-                    {
-                      title: "Student",
-                      utm: "utm_source=unidays",
-                      hero: "Study smarter, not harder",
-                      cta: "Get Started Free",
-                      proof: "Join 50,000+ students already learning",
-                      emphasis: "Flashcards · Practice tests · Study plans",
-                    },
-                  ].map((card) => (
-                    <div
-                      key={card.title}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5"
-                    >
-                      <p className="text-sm font-semibold">{card.title}</p>
-                      <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                        {card.utm}
+                {/* ── Phase 1: Research prompt (before research is done) ── */}
+                {!personaResearchDone && (
+                  <div className="grid gap-4">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-6 text-center">
+                      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent)]/10">
+                        <svg viewBox="0 0 24 24" className="h-7 w-7 text-[var(--accent)]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <circle cx="11" cy="11" r="8" />
+                          <path d="m21 21-4.35-4.35" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold">Discover Visitor Personas</h3>
+                      <p className="mx-auto mt-2 max-w-md text-sm text-[var(--muted)]">
+                        Use Nemotron to analyze your application context and identify the key visitor
+                        segments. The model will research your industry, value proposition, and typical
+                        user profiles to generate a personalization strategy.
                       </p>
-                      <div className="mt-4 grid gap-3 text-sm text-[var(--muted)]">
-                        <p>
-                          <span className="font-semibold text-[var(--ink)]">Hero: </span>
-                          {card.hero}
+                      <button
+                        type="button"
+                        onClick={handleRunPersonaResearch}
+                        disabled={personaResearchRunning}
+                        className="mt-6 rounded-2xl bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {personaResearchRunning ? "Researching\u2026" : "Run Market Research with Nemotron"}
+                      </button>
+                    </div>
+
+                    {/* Research log entries */}
+                    {personaResearchLog.length > 0 && (
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4">
+                        <p className="mb-3 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                          Research Progress
                         </p>
-                        <p>
-                          <span className="font-semibold text-[var(--ink)]">CTA: </span>
-                          {card.cta}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[var(--ink)]">Social proof: </span>
-                          {card.proof}
-                        </p>
-                        <p>
-                          <span className="font-semibold text-[var(--ink)]">Emphasis: </span>
-                          {card.emphasis}
-                        </p>
+                        <div className="grid gap-2 text-sm">
+                          {personaResearchLog.map((entry, i) => (
+                            <div
+                              key={i}
+                              className="flex items-start gap-2"
+                              style={{ animation: "fadeSlideIn 0.3s ease-out" }}
+                            >
+                              <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-sky-400" />
+                              <span className="text-[var(--muted)]">{entry}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Phase 2: Results (after research completes) ── */}
+                {personaResearchDone && (
+                  <>
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div className="flex rounded-full border border-[var(--border)] p-1 text-sm">
+                        {[
+                          { id: "teacher", label: "Teacher" },
+                          { id: "student", label: "Student" },
+                        ].map((tab) => {
+                          const active = personaTab === tab.id;
+                          return (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setPersonaTab(tab.id as PersonaTab)}
+                              className={`rounded-full px-4 py-2 ${
+                                active
+                                  ? "bg-[var(--ink)] text-white"
+                                  : "text-[var(--muted)]"
+                              }`}
+                            >
+                              {tab.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                        Generated by Nemotron
+                      </span>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {[
+                        {
+                          title: "Teacher",
+                          utm: "utm_source=canvas-lms",
+                          hero: "Empower your classroom with smarter tools",
+                          cta: "Start Your Free Trial",
+                          proof: "Trusted by 10,000+ educators worldwide",
+                          emphasis: "Grading \u00b7 Curriculum \u00b7 Student analytics",
+                        },
+                        {
+                          title: "Student",
+                          utm: "utm_source=unidays",
+                          hero: "Study smarter, not harder",
+                          cta: "Get Started Free",
+                          proof: "Join 50,000+ students already learning",
+                          emphasis: "Flashcards \u00b7 Practice tests \u00b7 Study plans",
+                        },
+                      ].map((card) => (
+                        <div
+                          key={card.title}
+                          className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5"
+                          style={{ animation: "fadeSlideIn 0.4s ease-out" }}
+                        >
+                          <p className="text-sm font-semibold">{card.title}</p>
+                          <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                            {card.utm}
+                          </p>
+                          <div className="mt-4 grid gap-3 text-sm text-[var(--muted)]">
+                            <p>
+                              <span className="font-semibold text-[var(--ink)]">Hero: </span>
+                              {card.hero}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-[var(--ink)]">CTA: </span>
+                              {card.cta}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-[var(--ink)]">Social proof: </span>
+                              {card.proof}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-[var(--ink)]">Emphasis: </span>
+                              {card.emphasis}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-start gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDemoPreviewUrls(null);
+                          runDemoWorkflow(PERSONALIZATION_STEPS, "personalization");
+                          setDemoWorkflowState("personalization-running");
+                          setCurrentTab("activity");
+                        }}
+                        disabled={demoWorkflowState === "personalization-running" || demoWorkflowState === "personalization-diff"}
+                        className="rounded-2xl bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        Deploy Personalization
+                      </button>
+                    </div>
+
+                    <div className="mt-2">
+                      <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
+                        Simulate Visitor
+                      </p>
+                      <h3 className="font-editorial text-xl font-semibold">Side-by-Side Preview</h3>
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        {[
+                          { label: "Teacher View", utm: "utm_source=canvas-lms" },
+                          { label: "Student View", utm: "utm_source=unidays" },
+                        ].map((view) => {
+                          const baseUrl = process.env.NEXT_PUBLIC_PROJECT_FLOW_URL || "http://localhost:3002";
+                          return (
+                            <div
+                              key={view.label}
+                              className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3"
+                            >
+                              <p className="text-sm font-semibold">{view.label}</p>
+                              <p className="text-xs text-[var(--muted)]">?{view.utm}</p>
+                              <iframe
+                                key={iframeKey}
+                                src={`${baseUrl}/?${view.utm}`}
+                                className="mt-2 h-[400px] w-full rounded-xl border border-[var(--border)]"
+                                title={view.label}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-4 flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIframeKey((k) => k + 1)}
+                          className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-sm font-medium"
+                        >
+                          Refresh Previews
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-start">
-                  <button
-                    type="button"
-                    className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-sm font-medium"
-                  >
-                    Add Persona
-                  </button>
-                </div>
-
-                <div className="mt-2">
-                  <p className="text-xs uppercase tracking-[0.28em] text-[var(--muted)]">
-                    Simulate Visitor
-                  </p>
-                  <h3 className="font-editorial text-xl font-semibold">Side-by-Side Preview</h3>
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    {[
-                      { label: "Teacher View", utm: "utm_source=canvas-lms" },
-                      { label: "Student View", utm: "utm_source=unidays" },
-                    ].map((view) => {
-                      const baseUrl = process.env.NEXT_PUBLIC_PROJECT_FLOW_URL || "http://localhost:3002";
-                      return (
-                        <div
-                          key={view.label}
-                          className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3"
-                        >
-                          <p className="text-sm font-semibold">{view.label}</p>
-                          <p className="text-xs text-[var(--muted)]">?{view.utm}</p>
-                          <iframe
-                            key={iframeKey}
-                            src={`${baseUrl}/?${view.utm}`}
-                            className="mt-2 h-[400px] w-full rounded-xl border border-[var(--border)]"
-                            title={view.label}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-4 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setIframeKey((k) => k + 1)}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-sm font-medium"
-                    >
-                      Refresh Previews
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleResetPersonalization}
-                      disabled={busy}
-                      className="rounded-2xl border border-[var(--danger)] bg-[#fef0ef] px-4 py-2 text-sm font-semibold text-[var(--danger)] disabled:opacity-50"
-                    >
-                      {busy ? "Resetting..." : "Reset Personalization"}
-                    </button>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1253,6 +1502,21 @@ export default function PlatformPage() {
                       </label>
                     </div>
                   </div>
+
+                  {/* Reset Demo */}
+                  <div className="rounded-2xl border border-[var(--danger)] bg-[#fef0ef] p-5">
+                    <p className="text-sm font-semibold text-[var(--danger)]">Reset Demo</p>
+                    <p className="mt-2 text-sm text-[var(--muted)]">
+                      Clear all activity, reset the Learnify site, and return to initial state.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleResetDemo}
+                      className="mt-4 rounded-2xl bg-[var(--danger)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                    >
+                      Reset Everything
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1261,6 +1525,80 @@ export default function PlatformPage() {
           </section>
         </main>
       </div>
+
+      {/* ── Diff Review Modal Overlay ── */}
+      {demoShowDiff && (() => {
+        const diff = demoShowDiff === "personalization" ? PERSONALIZATION_DIFF : COMPETITOR_DIFF;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="mx-4 w-full max-w-3xl rounded-3xl border border-[var(--border)] bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Code Review</p>
+                  <h3 className="mt-1 text-lg font-semibold">{diff.title}</h3>
+                </div>
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                  Awaiting Review
+                </span>
+              </div>
+
+              <div className="px-6 py-4">
+                <p className="mb-3 font-mono text-xs text-[var(--muted)]">{diff.file}</p>
+                <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-neutral-50 font-mono text-sm">
+                  {diff.lines.map((line, i) => {
+                    let bg = "";
+                    let prefix = " ";
+                    let textColor = "text-neutral-700";
+                    if (line.type === "removed") {
+                      bg = "bg-red-50";
+                      prefix = "-";
+                      textColor = "text-red-800";
+                    } else if (line.type === "added") {
+                      bg = "bg-green-50";
+                      prefix = "+";
+                      textColor = "text-green-800";
+                    }
+                    return (
+                      <div key={i} className={`flex ${bg}`}>
+                        <span className="w-8 shrink-0 select-none text-right text-neutral-400 pr-2 border-r border-neutral-200">
+                          {i + 1}
+                        </span>
+                        <span className={`w-5 shrink-0 text-center select-none ${textColor}`}>{prefix}</span>
+                        <span className={`flex-1 whitespace-pre px-2 ${textColor}`}>{line.text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-[var(--border)] px-6 py-4">
+                <button
+                  type="button"
+                  onClick={handleDemoDeny}
+                  className="rounded-2xl border border-red-300 bg-red-50 px-5 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-100 transition-colors"
+                >
+                  Deny
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDemoApprove}
+                  className="rounded-2xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+                >
+                  Approve &amp; Merge
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── CSS animation for activity log entries ── */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}} />
 
       <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 pb-10 md:hidden">
         <div className="rounded-3xl border border-[var(--border)] bg-white/90 p-5">
