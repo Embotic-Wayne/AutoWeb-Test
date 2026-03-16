@@ -6,6 +6,7 @@ Orchestration: run the Intelligence Engine pipeline.
 4. Update stored state
 """
 import httpx
+from datetime import datetime, timezone
 
 from app.config import settings
 from app.services.firecrawl import scrape_url
@@ -21,6 +22,7 @@ def run_intel(target_url: str) -> dict:
     """
     # 1. Scrape
     crawl = scrape_url(target_url)
+    crawl["scanned_at"] = datetime.now(timezone.utc).isoformat()
 
     # 2. Diff
     previous = load_previous_crawl()

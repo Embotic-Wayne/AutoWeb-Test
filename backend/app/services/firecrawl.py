@@ -46,6 +46,7 @@ def scrape_url(url: str) -> dict:
     normalized["html"] = html
     normalized["url"] = url
     normalized["design_hints"] = _extract_design_hints(html)
+    normalized["keywords"] = _extract_keywords(markdown)
     return normalized
 
 
@@ -142,3 +143,36 @@ def _normalize_crawl(markdown: str) -> dict:
         "pricing": pricing,
         "features": features,
     }
+
+
+def _extract_keywords(markdown: str, limit: int = 12) -> list[str]:
+    """
+    Extract simple keywords from markdown using frequency with stopword filtering.
+    Best-effort heuristic for quick insight display.
+    """
+    if not markdown:
+        return []
+
+    text = re.sub(r"[`*_>#\[\]\(\)\"'\.,:;!?/\\|]+", " ", markdown.lower())
+    words = re.findall(r"\b[a-z0-9][a-z0-9\-]{2,}\b", text)
+    if not words:
+        return []
+
+    stopwords = {
+        "the", "and", "for", "with", "that", "this", "from", "your", "you", "our",
+        "are", "was", "were", "has", "have", "will", "can", "all", "not", "but",
+        "into", "over", "under", "about", "into", "their", "they", "them", "its",
+        "we", "us", "as", "on", "in", "to", "of", "a", "an", "is", "it", "or",
+        "by", "be", "at", "if", "than", "then", "more", "most", "less", "up",
+        "out", "off", "do", "does", "did", "so", "no", "yes", "why", "how",
+        "what", "who", "when", "where", "which",
+    }
+
+    counts: dict[str, int] = {}
+    for w in words:
+        if w in stopwords:
+            continue
+        counts[w] = counts.get(w, 0) + 1
+
+    ranked = sorted(counts.items(), key=lambda x: (-x[1], x[0]))
+    return [w for w, _ in ranked[:limit]]
